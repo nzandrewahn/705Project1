@@ -25,7 +25,8 @@ float long_range_dist (int ADCval){
 void orientation (){
   // Check readings, one will be max range, lowest voltage as voltage is inverse to distance
   float diff = 10;
-  float gain = 0.1;
+  float rotating_gain = 0.1;
+  float left_gain = 0.1;
   int long1ADC = analogRead(long1);
   int long2ADC = analogRead(long2);
   int short1ADC = analogRead(short1);
@@ -59,30 +60,54 @@ void orientation (){
   //Tune to a small movement
   if ((short1ADC < 100) || (short2ADC < 100)){
     speed_val = 100;
-    gain = 0.1;
+    rotating_gain = 0.1;
   } else {
     speed_val = -100;
-    gain = -0.1;
+    rotating_gain = -0.1;
   }
-  
+
   int backADC = analogRead(back);
   float priorBackDist = long_range_dist(backADC);
   int leftADC = analogRead(left);
-  float priorLeftDist = short_range_dist(leftADC);
+  float leftDist = short_range_dist(leftADC);
 
-  while((diff > 0.5*2) || (-diff > 0.5*2)){
-    cw();
-    delay(10);
-    backADC = analogRead(back);
-    float backDist = long_range_dist(backADC);
-    leftADC = analogRead(left);
-    float leftDist = short_range_dist(leftADC);
+  left_speed = (60 - leftDist)*left_gain;
+  left_speed = left_speed < 2300 ? left_speed : 2300;
+  left_speed = left_speed > 700 ? left_speed : 700;
 
-    diff = priorBackDist + priorLeftDist - backDist - leftDist;
-    speed_val = gain * diff;
-    priorBackDist = backDist;
-    priorLeftDist = leftDist;
+  left_font_motor.writeMicroseconds(1500 + speed_val);
+  left_rear_motor.writeMicroseconds(1500 + speed_val);
+  right_rear_motor.writeMicroseconds(1500 + speed_val);
+  right_font_motor.writeMicroseconds(1500 + speed_val);
+  
+//  int backADC = analogRead(back);
+//  float priorBackDist = long_range_dist(backADC);
+//  int leftADC = analogRead(left);
+//  float priorLeftDist = short_range_dist(leftADC);
+//
+//  while((diff > 0.5*2) || (-diff > 0.5*2)){
+//    cw();
+//    delay(10);
+//    backADC = analogRead(back);
+//    float backDist = long_range_dist(backADC);
+//    leftADC = analogRead(left);
+//    float leftDist = short_range_dist(leftADC);
+//
+//    diff = priorBackDist + priorLeftDist - backDist - leftDist;
+//    speed_val = gain * diff;
+//    priorBackDist = backDist;
+//    priorLeftDist = leftDist;
+    
   }
+}
+
+void set_gyro(void){
+  
+}
+
+//RUNNING
+void forward(void){
+  
 }
 
 void cw(){}
