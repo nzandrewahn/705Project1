@@ -26,6 +26,8 @@
 //#define NO_HC-SR04 //Uncomment of HC-SR04 ultrasonic ranging sensor is not attached.
 //#define NO_BATTERY_V_OK //Uncomment of BATTERY_V_OK if you do not care about battery damage.
 
+#define WALL_DISTANCE (15)
+
 //State machine states
 enum STATE
 {
@@ -56,9 +58,6 @@ void setup(void)
   turret_motor.attach(11);
   pinMode(LED_BUILTIN, OUTPUT);
 
-  // The Trigger pin will tell the ultrasonic sensor to range find
-  pinMode(TRIG_PIN, OUTPUT);
-  digitalWrite(TRIG_PIN, LOW);
 
   // Setup the Serial port and pointer, the pointer allows switching the debug info through the USB port(Serial) or Bluetooth port(Serial1) with ease.
   SerialCom = &Serial;
@@ -92,7 +91,7 @@ void loop(void) //main loop
 
 STATE initialising()
 {
-  //initialising, enable motors
+  // Initialising, enable motors
   SerialCom->println("INITIALISING....");
   delay(1000); //One second delay to see the serial string "INITIALISING...."
   SerialCom->println("Enabling Motors...");
@@ -104,6 +103,27 @@ STATE initialising()
 STATE running()
 {
 
+  // Check if turning count is higher than 4 if yes then return
+
+  // Read Sensor values
+  int newLeft = // read value  
+
+  // Store values 
+  int prevLeft = // read value 
+
+  // Decide which way to go based on new value vs old value, so the difference between the old and new value is the error and we exit when front is less than 15cm
+  while (1){  
+
+     error = WALL_DISTANCE - newLeft;
+     
+    
+     frontDist = //read value 
+  }
+
+  // Increment no of corners
+
+  // Run turning function 
+  
   return RUNNING;
 }
 
