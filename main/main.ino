@@ -1,29 +1,15 @@
 #include <Servo.h>
 
-//Variables 
+//Variables
 
-
-
-void setup(void){
-
+void setup(void)
+{
+    //setup
 }
 
-
-void loop(void){
-
+void loop(void)
+{
+    //
 }
 
-
-
-
-//// Helper Functions 
-
-
-
-
-
-
-
-
-
-
+//// Helper Functions
