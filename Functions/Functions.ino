@@ -9,17 +9,35 @@ int speed_val;
 void setup(void){}
 void loop(void){}
 
-float short_range_dist (int ADCval){
+float right_dist (void){
   //Replace with derived formula
-  float dist = 11.724/ADCval *(5/1023.0) - 0.24;
-  return dist;
+  int ADCval = analogRead(right)
+  float dist = 0.0005*ADCval - 0.0078//11.724/ADCval *(5/1023.0) - 0.24;
+  return dist; //in cm
 }
 
-float long_range_dist (int ADCval){
+float left_dist (void){
   //Replace with derived formula
-  float dist = 20.9/ADCval *(5/1023.0);
-  return dist;
+  int ADCval = analogRead(left)
+  float dist = 0.0005*ADCval - 0.0101//11.724/ADCval *(5/1023.0) - 0.24;
+  return dist; //in cm
 }
+
+float front_dist (void){
+  //Replace with derived formula
+  int ADCval = analogRead(front)
+  float dist = 0.0002*ADCval - 0.0068//20.9/ADCval *(5/1023.0);
+  return dist; //in cm
+}
+
+
+float front_dist (void){
+  //Replace with derived formula
+  int ADCval = analogRead(front)
+  float dist = 0.0002*ADCval - 0.0051//20.9/ADCval *(5/1023.0);
+  return dist; //in cm
+}
+
 
 //INITIALISING
 void orientation (){
