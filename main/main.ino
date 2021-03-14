@@ -27,6 +27,7 @@
 //#define NO_BATTERY_V_OK //Uncomment of BATTERY_V_OK if you do not care about battery damage.
 
 #define WALL_DISTANCE (15)
+#define FRONT_DISTANCE_LIMIT (15)
 
 //State machine states
 enum STATE
@@ -57,7 +58,6 @@ void setup(void)
 {
   turret_motor.attach(11);
   pinMode(LED_BUILTIN, OUTPUT);
-
 
   // Setup the Serial port and pointer, the pointer allows switching the debug info through the USB port(Serial) or Bluetooth port(Serial1) with ease.
   SerialCom = &Serial;
@@ -106,24 +106,34 @@ STATE running()
   // Check if turning count is higher than 4 if yes then return
 
   // Read Sensor values
-  int newLeft = // read value  
+  int newLeft = left_dist();
 
-  // Store values 
-  int prevLeft = // read value 
+      // Store values
+  int prevLeft;
 
-  // Decide which way to go based on new value vs old value, so the difference between the old and new value is the error and we exit when front is less than 15cm
-  while (1){  
+      // Decide which way to go based on new value vs old value, so the difference between the old and new value is the error and we exit when front is less than 15cm
+  while (frontDist < FRONT_DISTANCE_LIMIT)
+  {
 
-     error = WALL_DISTANCE - newLeft;
-     
-    
-     frontDist = //read value 
+    error = WALL_DISTANCE - newLeft;
+
+    if (error > 0){
+      //go right
+    } else if (error < 0) {
+      //go left
+    } else{
+      //go straight / do nothing
+    }
+
+
+    frontDist = front_dist();
+    prevLeft = newLeft;
   }
 
   // Increment no of corners
 
-  // Run turning function 
-  
+  // Run turning function
+
   return RUNNING;
 }
 
