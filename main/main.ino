@@ -58,7 +58,6 @@ int left_dist();
 int right_dist();
 int front_dist();
 
-
 //Serial Pointer
 HardwareSerial *SerialCom;
 
@@ -116,30 +115,34 @@ STATE running()
   // Read Sensor values
   int newLeft = left_dist();
 
-      // Store values
+  // Store values
   int prevLeft;
   int frontDist;
 
-      // Decide which way to go based on new value vs old value, so the difference between the old and new value is the error and we exit when front is less than 15cm
+  // Decide which way to go based on new value vs old value, so the difference between the old and new value is the error and we exit when front is less than 15cm
   while (frontDist < FRONT_DISTANCE_LIMIT)
   {
 
     int error = WALL_DISTANCE - newLeft;
 
-    if (error > 0){
+    if (error > 0)
+    {
       //go right
       left_front_motor.writeMicroseconds(ANTICLOCKWISE);
       right_front_motor.writeMicroseconds(ANTICLOCKWISE);
       left_rear_motor.writeMicroseconds(CLOCKWISE);
       right_rear_motor.writeMicroseconds(CLOCKWISE);
-      
-    } else if (error < 0) {
+    }
+    else if (error < 0)
+    {
       //go left
       left_front_motor.writeMicroseconds(CLOCKWISE);
       right_front_motor.writeMicroseconds(CLOCKWISE);
       left_rear_motor.writeMicroseconds(ANTICLOCKWISE);
       right_rear_motor.writeMicroseconds(ANTICLOCKWISE);
-    } else{
+    }
+    else
+    {
       //go straight / do nothing
       left_front_motor.writeMicroseconds(CLOCKWISE);
       right_front_motor.writeMicroseconds(CLOCKWISE);
@@ -198,21 +201,22 @@ STATE stopped()
 
 /////////////////////////////////////////////// Helper Functions
 
-////////// Reading Sensor 
+////////// Reading Sensor
 
-int left_dist(){
+int left_dist()
+{
   return 1;
 }
 
-int right_dist(){
-  return 1;  
+int right_dist()
+{
+  return 1;
 }
 
-int front_dist(){
-  return 1;  
+int front_dist()
+{
+  return 1;
 }
-
-
 
 ////////////////////////////// Reading Battery Voltage
 
