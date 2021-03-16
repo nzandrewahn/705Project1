@@ -31,6 +31,7 @@
 #define ANTICLOCKWISE (1000)
 #define CLOCKWISE (2000)
 #define STOP (1500)
+#define WINDOW_SIZE (300)
 
 //State machine states
 enum STATE
@@ -77,8 +78,9 @@ void setup(void)
   SerialCom->println("MECHENG706_Base_Code_25/01/2018");
   delay(1000);
   SerialCom->println("Setup....");
+  SerialCom->println("Andrew is a pain and will be documenting the variable names")
 
-  delay(1000); //settling time but no really needed
+      delay(1000); //settling time but no really needed
 }
 
 void loop(void) //main loop
@@ -130,7 +132,7 @@ STATE running()
   {
 
     int error = WALL_DISTANCE - newLeft;
-    int thePast = [];
+    int thePast[WINDOW_SIZE] = [];
 
     if (error > 0)
     {
@@ -332,7 +334,7 @@ void fast_flash_double_LED_builtin()
 }
 
 // Motor Commands
-void GoNorth(void)
+void GoForwards(void)
 {
   left_front_motor.writeMicroseconds(CLOCKWISE);
   right_front_motor.writeMicroseconds(CLOCKWISE);
@@ -340,7 +342,7 @@ void GoNorth(void)
   right_rear_motor.writeMicroseconds(CLOCKWISE);
 }
 
-void GoSouth(void)
+void GoBackwards(void)
 {
   left_front_motor.writeMicroseconds(ANTICLOCKWISE);
   right_front_motor.writeMicroseconds(ANTICLOCKWISE);
@@ -348,7 +350,7 @@ void GoSouth(void)
   right_rear_motor.writeMicroseconds(ANTICLOCKWISE);
 }
 
-void GoEast(void)
+void StrafeRight(void)
 {
   left_front_motor.writeMicroseconds(ANTICLOCKWISE);
   right_front_motor.writeMicroseconds(ANTICLOCKWISE);
@@ -356,10 +358,26 @@ void GoEast(void)
   right_rear_motor.writeMicroseconds(CLOCKWISE);
 }
 
-void GoWest(void)
+void StrafeLeft(void)
 {
   left_front_motor.writeMicroseconds(CLOCKWISE);
   right_front_motor.writeMicroseconds(CLOCKWISE);
   left_rear_motor.writeMicroseconds(ANTICLOCKWISE);
   right_rear_motor.writeMicroseconds(ANTICLOCKWISE);
+}
+
+void TurnRight(void)
+{
+  left_front_motor.writeMicroseconds(CLOCKWISE);
+  right_front_motor.writeMicroseconds(ANTICLOCKWISE);
+  left_rear_motor.writeMicroseconds(CLOCKWISE);
+  right_rear_motor.writeMicroseconds(ANTICLOCKWISE);
+}
+
+void TurnLeft(void)
+{
+  left_front_motor.writeMicroseconds(ANTICLOCKWISE);
+  right_front_motor.writeMicroseconds(CLOCKWISE);
+  left_rear_motor.writeMicroseconds(ANTICLOCKWISE);
+  right_rear_motor.writeMicroseconds(CLOCKWISE);
 }
