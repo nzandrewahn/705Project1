@@ -14,10 +14,7 @@
     Vex Motors https://www.vexrobotics.com/motors.html
     Turnigy nano-tech 2200mah 2S https://hobbyking.com/en_us/turnigy-nano-tech-2200mah-2s-25-50c-lipo-pack.html
 
-  Date: 11/11/2016
-  Author: Logan Stuart
-  Modified: 15/02/2018
-  Author: Logan Stuart
+  Author: CloutGods
 */
 
 #include <Servo.h> //Need for Servo pulse output
@@ -136,18 +133,18 @@ STATE running()
 
     if (error > 0)
     {
-      //go right
-      GoEast();
+      // Go Right
+      StrafeRight();
     }
     else if (error < 0)
     {
-      //go left
-      GoWest();
+      // Go Left
+      StrafeLeft();
     }
     else
     {
-      //go north
-      GoNorth();
+      // Go Forwards
+      GoForwards();
     }
 
     frontDist = front_dist();
