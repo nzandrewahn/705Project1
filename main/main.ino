@@ -28,6 +28,9 @@
 
 #define WALL_DISTANCE (15)
 #define FRONT_DISTANCE_LIMIT (15)
+#define ANTICLOCKWISE (1000)
+#define CLOCKWISE (2000)
+#define STOP (1500)
 
 //State machine states
 enum STATE
@@ -50,6 +53,11 @@ Servo left_rear_motor;   // create servo object to control Vex Motor Controller 
 Servo right_rear_motor;  // create servo object to control Vex Motor Controller 29
 Servo right_front_motor; // create servo object to control Vex Motor Controller 29
 Servo turret_motor;
+
+int left_dist();
+int right_dist();
+int front_dist();
+
 
 //Serial Pointer
 HardwareSerial *SerialCom;
@@ -110,21 +118,34 @@ STATE running()
 
       // Store values
   int prevLeft;
+  int frontDist;
 
       // Decide which way to go based on new value vs old value, so the difference between the old and new value is the error and we exit when front is less than 15cm
   while (frontDist < FRONT_DISTANCE_LIMIT)
   {
 
-    error = WALL_DISTANCE - newLeft;
+    int error = WALL_DISTANCE - newLeft;
 
     if (error > 0){
       //go right
+      left_front_motor.writeMicroseconds(ANTICLOCKWISE);
+      right_front_motor.writeMicroseconds(ANTICLOCKWISE);
+      left_rear_motor.writeMicroseconds(CLOCKWISE);
+      right_rear_motor.writeMicroseconds(CLOCKWISE);
+      
     } else if (error < 0) {
       //go left
+      left_front_motor.writeMicroseconds(CLOCKWISE);
+      right_front_motor.writeMicroseconds(CLOCKWISE);
+      left_rear_motor.writeMicroseconds(ANTICLOCKWISE);
+      right_rear_motor.writeMicroseconds(ANTICLOCKWISE);
     } else{
       //go straight / do nothing
+      left_front_motor.writeMicroseconds(CLOCKWISE);
+      right_front_motor.writeMicroseconds(CLOCKWISE);
+      left_rear_motor.writeMicroseconds(CLOCKWISE);
+      right_rear_motor.writeMicroseconds(CLOCKWISE);
     }
-
 
     frontDist = front_dist();
     prevLeft = newLeft;
@@ -176,6 +197,22 @@ STATE stopped()
 }
 
 /////////////////////////////////////////////// Helper Functions
+
+////////// Reading Sensor 
+
+int left_dist(){
+  return 1;
+}
+
+int right_dist(){
+  return 1;  
+}
+
+int front_dist(){
+  return 1;  
+}
+
+
 
 ////////////////////////////// Reading Battery Voltage
 
