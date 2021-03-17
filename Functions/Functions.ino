@@ -27,7 +27,8 @@ void setup(void){
   SerialCom ->begin(115200);
   SerialCom ->println("Starting");
   enable_motors();
-  orientation();
+  //orientation();
+  turn_90();
   stop();
 }
 void loop(void){}
@@ -125,9 +126,87 @@ void set_gyro(void){
   
 }
 
+void turn_90 (void){
+  float leftFrontDist,leftBackDist, dist, angle;
+  float error = 20; //initialise error to garbage value
+
+  int t, cwTurn, strafeRight, frontControl, rearControl;
+  int cwGain = 1500;
+  int strafeGain = 50;
+  int separationDist = 19;
+  int backDist = back_dist();
+
+  int tinit = millis();
+  
+  /*while(1){
+  backDist = back_dist();
+  SerialCom -> print("backDist: ");
+  SerialCom -> println(backDist);
+  }*/
+
+  while((backDist > 30) || (backDist < 2) || t < 1000){
+    backDist = back_dist();
+    t = millis() - tinit;
+    left_font_motor.writeMicroseconds(2000);
+    left_rear_motor.writeMicroseconds(2000);
+    right_rear_motor.writeMicroseconds(2000);
+    right_font_motor.writeMicroseconds(2000);
+  }
+
+  while(((abs(angle) > 0.0349) || (abs(error) > 0.2)) && (t < 2000)){
+    leftFrontDist = left_front_dist();
+    leftBackDist = left_back_dist();
+    //distance from the wall
+    dist = (leftFrontDist + leftBackDist)/2;
+    //approximate sin theta to theta
+    angle = (leftFrontDist - leftBackDist)/separationDist;
+
+    if ((angle < 3.14/8) && (angle > -3.14/8)) {
+      //Reference angle is 0, control signal for turning CCW
+      cwTurn = angle * cwGain;
+      //6.2 = 15 - 8.8 (dist from centre of robot to sensor)
+      error = 6.2 - dist;
+      //Control signal for strafing right
+      strafeRight = error * strafeGain ;
+      strafeRight = (strafeRight > 500) ? 500 : strafeRight;
+    } else{
+      cwTurn = 500;
+      strafeRight = 0;
+    }
+
+    //Control signal for front motors
+    frontControl = (cwTurn + strafeRight > 500) ? 500 : cwTurn + strafeRight;
+    frontControl = (cwTurn + strafeRight < -500) ? -500 : frontControl;
+
+    //Control signal for rear motors
+    rearControl = (cwTurn - strafeRight > 500) ? 500 : -cwTurn - strafeRight;
+    rearControl = (cwTurn - strafeRight < -500) ? -500 : rearControl;
+    
+    left_font_motor.writeMicroseconds(1500 + frontControl);
+    left_rear_motor.writeMicroseconds(1500 + rearControl);
+    right_rear_motor.writeMicroseconds(1500 + rearControl);
+    right_font_motor.writeMicroseconds(1500 + frontControl);
+    
+    SerialCom -> print("angle = ");
+    SerialCom -> println(angle);
+    SerialCom -> print(", error = ");
+    SerialCom -> println(error);
+    SerialCom -> println(t);
+    
+    //If the control signals are low for too long, start the timer to quit so that the motors don't burn out
+    if ((abs(strafeRight) < 50) && (abs(cwTurn) < 50)){
+      t = t + millis() - tinit;
+    } else {
+      t = 0;
+    }
+  }
+
+  
+}
+
 //RUNNING
 void forward(void){
-  
+
 }
 
 
