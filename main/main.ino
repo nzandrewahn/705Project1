@@ -57,7 +57,7 @@ int left_back_dist();
 int left_front_dist();
 int right_dist();
 int front_dist();
-void LeftDistanceController();
+void goStraight(void);
 
 //Tuning Parameters
 int Kp = 30;
@@ -119,47 +119,10 @@ STATE running()
   // Check if turning count is higher than 4 if yes then return
 
   // Read Sensor values
-
-  // Store values
-  int frontDist = front_dist();
-  int cornerCount = 0;
-
-  // Decide which way to go based on new value vs old value, so the difference between the old and new value is the error and we exit when front is less than 15cm
-  while (true)
-  {
-
-    int avgDistance = (left_front_dist() + left_back_dist()) / 2;
-    int TOLERANCE = 2;
-    int error = WALL_DISTANCE - avgDistance;
-    int front_offset = constrain(error*Kp,0,500);
-    int rear_offset = constrain(error*Kp,0,500);
-
-    if ((error > TOLERANCE) || (error < -TOLERANCE)){
-      while (error > TOLERANCE || error < -TOLERANCE)
-      {
-        front_offset = constrain(error*Kp,-500,500);
-        rear_offset = -constrain(error*Kp,-500,500);
-        
-        left_front_motor.writeMicroseconds(SERVO_STOP_VALUE + front_offset);
-        right_front_motor.writeMicroseconds(SERVO_STOP_VALUE + front_offset);
-        left_rear_motor.writeMicroseconds(SERVO_STOP_VALUE + rear_offset);
-        right_rear_motor.writeMicroseconds(SERVO_STOP_VALUE + rear_offset);
+  void goStraight(void);  
   
-        avgDistance = (left_front_dist() + left_back_dist())/2;
-        error = WALL_DISTANCE - avgDistance;
-        Serial.print("Error: ");
-        Serial.println(error);
-      }
-    } else {
-      Serial.println("Going Forward");
-      // Run turning function
-      GoForwards(); 
-    }
-  }
-
-
   // Increment no of corners
-
+  
   stop();
   return RUNNING;
 }
@@ -396,4 +359,41 @@ void TurnLeft(void)
   right_front_motor.writeMicroseconds(CLOCKWISE);
   left_rear_motor.writeMicroseconds(ANTICLOCKWISE);
   right_rear_motor.writeMicroseconds(CLOCKWISE);
+}
+
+void goStraight(void){
+    // Store values
+  int frontDist = front_dist();
+  int cornerCount = 0;
+
+  // Decide which way to go based on new value vs old value, so the difference between the old and new value is the error and we exit when front is less than 15cm
+  int avgDistance = (left_front_dist() + left_back_dist()) / 2;
+  int TOLERANCE = 2;
+  int error = WALL_DISTANCE - avgDistance;
+  int front_offset = constrain(error*Kp,0,500);
+  int rear_offset = constrain(error*Kp,0,500);
+
+  while (frontDist < FRONT_DISTANCE_LIMIT){
+    if ((error > TOLERANCE) || (error < -TOLERANCE)){
+      while (error > TOLERANCE || error < -TOLERANCE)
+      {
+        front_offset = constrain(error*Kp,-500,500);
+        rear_offset = -constrain(error*Kp,-500,500);
+        
+        left_front_motor.writeMicroseconds(SERVO_STOP_VALUE + front_offset);
+        right_front_motor.writeMicroseconds(SERVO_STOP_VALUE + front_offset);
+        left_rear_motor.writeMicroseconds(SERVO_STOP_VALUE + rear_offset);
+        right_rear_motor.writeMicroseconds(SERVO_STOP_VALUE + rear_offset);
+  
+        avgDistance = (left_front_dist() + left_back_dist())/2;
+        error = WALL_DISTANCE - avgDistance;
+        Serial.print("Error: ");
+        Serial.println(error);
+      }
+    } else {
+      Serial.println("Going Forward");
+      // Run turning function
+      GoForwards(); 
+    }
+  }
 }
