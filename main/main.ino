@@ -131,29 +131,39 @@ STATE running()
     int avgDistance = (left_front_dist() + left_back_dist()) / 2;
     int TOLERANCE = 3;
     int error = WALL_DISTANCE - avgDistance;
-    int front_offset = constrain(error*Kp,0,500);
-    int rear_offset = constrain(error*Kp,0,500);
+    int front_offsets[2] = {0};
+    int rear_offsets[2] = {0};
 
     Serial.print("Error: ");
     Serial.println(error);
   
     while (error > TOLERANCE || error < TOLERANCE)
-    {
-      
-      
-      left_front_motor.writeMicroseconds(SERVO_STOP_VALUE + front_offset);
-      right_front_motor.writeMicroseconds(SERVO_STOP_VALUE + front_offset);
-      left_rear_motor.writeMicroseconds(SERVO_STOP_VALUE - rear_offset);
-      right_rear_motor.writeMicroseconds(SERVO_STOP_VALUE - rear_offset);
+    {      
+      left_front_motor.writeMicroseconds(SERVO_STOP_VALUE + front_offsets[0]);
+      right_front_motor.writeMicroseconds(SERVO_STOP_VALUE + front_offsets[1]);
+      left_rear_motor.writeMicroseconds(SERVO_STOP_VALUE - rear_offsets[0]);
+      right_rear_motor.writeMicroseconds(SERVO_STOP_VALUE - rear_offsets[1]);
 
       avgDistance = (left_front_dist() + left_back_dist())/2;
       error = WALL_DISTANCE - avgDistance;
-      front_offset = constrain(error*Kp,-500,500);
-      rear_offset = constrain(error*Kp,-500,500);
-    }
-//    GoForwards();
-//    frontDist = front_dist();
+      
+      if (error < 0){
+        front_offsets[0] = 0;
+        front_offsets[1] = -constrain(error*Kp,0,500);
+        rear_offsets[0] = constrain(error*Kp,0,500);
+        rear_offsets[1] = 0;
+      } else if (error > 0){
+        front_offsets[0] = constrain(error*Kp,-500,500);
+        front_offsets[1] = 0;
+        rear_offsets[0] = 0;
+        rear_offsets[1] = -constrain(error*Kp,-500,500);
+      } else {
+          GoForwards();
+      }
 
+
+       
+    }
   }
 
   // Run turning function
