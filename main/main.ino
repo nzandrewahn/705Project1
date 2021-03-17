@@ -27,8 +27,9 @@
 #define FRONT_DISTANCE_LIMIT (15)
 #define ANTICLOCKWISE (1000)
 #define CLOCKWISE (2000)
-#define STOP (1500)
+#define SERVO_STOP_VALUE (1500)
 #define WINDOW_SIZE (300)
+#define YAW_THRESHHOLD (500)
 
 //State machine states
 enum STATE
@@ -52,13 +53,15 @@ Servo right_rear_motor;  // create servo object to control Vex Motor Controller 
 Servo right_front_motor; // create servo object to control Vex Motor Controller 29
 Servo turret_motor;
 
-int left_dist();
+int left_back_dist();
+int left_front_dist();
 int right_dist();
 int front_dist();
+void LeftDistanceController();
 
 //Tuning Parameters
 int Kd = 0;
-int Kp = 0;
+int Kp = 5;
 int Ki = 0;
 
 //Serial Pointer
@@ -75,9 +78,9 @@ void setup(void)
   SerialCom->println("MECHENG706_Base_Code_25/01/2018");
   delay(1000);
   SerialCom->println("Setup....");
-  SerialCom->println("Andrew is a pain and will be documenting the variable names")
+  SerialCom->println("Andrew is a pain and will be documenting the variable names");
 
-      delay(1000); //settling time but no really needed
+  delay(1000); //settling time but no really needed
 }
 
 void loop(void) //main loop
@@ -117,44 +120,43 @@ STATE running()
   // Check if turning count is higher than 4 if yes then return
 
   // Read Sensor values
-  int newLeft = left_dist();
 
   // Store values
-  int prevLeft;
-  int frontDist;
+  int frontDist = front_dist();
   int cornerCount = 0;
 
+  Serial.print("front Distance: ");
+  Serial.println(frontDist);
+
   // Decide which way to go based on new value vs old value, so the difference between the old and new value is the error and we exit when front is less than 15cm
-  while (frontDist < FRONT_DISTANCE_LIMIT)
+  while (frontDist > FRONT_DISTANCE_LIMIT)
   {
 
-    int error = WALL_DISTANCE - newLeft;
-    int thePast[WINDOW_SIZE] = [];
+    //    int thePast[WINDOW_SIZE] = {};
+    //    int yaw = read_yaw();
+    LeftDistanceController(void);
 
-    if (error > 0)
+    /*
+    if (yaw < YAW_THRESHHOLD){
+      // Run yaw controller
+    } else if (yaw < YAW_THRESHHOLD)
     {
-      // Go Right
-      StrafeRight();
+      //Run distance and controller  
     }
-    else if (error < 0)
-    {
-      // Go Left
-      StrafeLeft();
-    }
-    else
-    {
-      // Go Forwards
-      GoForwards();
-    }
+    */
 
+    Serial.print("front Distance: ");
+    Serial.println(frontDist);
+
+    GoForwards();
     frontDist = front_dist();
-    prevLeft = newLeft;
   }
 
   // Run turning function
 
   // Increment no of corners
-  cornerCount++;
+
+  stop();
 
   return RUNNING;
 }
@@ -201,17 +203,31 @@ STATE stopped()
 
 ////////// Reading Sensor
 
-int left_dist()
+int left_front_dist()
 {
-  return 1;
+  int Dis2 = 1 / (0.0005 * analogRead(A7) - 0.0101);
+  return Dis2;
 }
 
-int right_dist()
+int left_back_dist()
 {
-  return 1;
+  int Dis1 = 1 / (0.0005 * analogRead(A4) - 0.0078);
+  return Dis1;
 }
 
 int front_dist()
+{
+  int Dis4 = (1 / (0.0002 * analogRead(A15) - 0.0051) - 2.5);
+  return Dis4;
+}
+
+int back_dist()
+{
+  int Dis3 = (1 / (0.0002 * analogRead(A11) - 0.0068) - 2.5);
+  return Dis3;
+}
+
+int read_yaw()
 {
   return 1;
 }
@@ -334,9 +350,9 @@ void fast_flash_double_LED_builtin()
 void GoForwards(void)
 {
   left_front_motor.writeMicroseconds(CLOCKWISE);
-  right_front_motor.writeMicroseconds(CLOCKWISE);
+  right_front_motor.writeMicroseconds(ANTICLOCKWISE);
   left_rear_motor.writeMicroseconds(CLOCKWISE);
-  right_rear_motor.writeMicroseconds(CLOCKWISE);
+  right_rear_motor.writeMicroseconds(ANTICLOCKWISE);
 }
 
 void GoBackwards(void)
@@ -377,4 +393,23 @@ void TurnLeft(void)
   right_front_motor.writeMicroseconds(CLOCKWISE);
   left_rear_motor.writeMicroseconds(ANTICLOCKWISE);
   right_rear_motor.writeMicroseconds(CLOCKWISE);
+}
+
+void LeftDistanceController(void)
+{
+  int avgDistance = (left_front_dist() + left_back_dist()) / 2;
+  int tolerance = 3;
+
+  while ((avgDistance < (WALL_DISTANCE - tolerance)) || (avgDistance > (WALL_DISTANCE + tolerance)))
+  {
+    avgDistance = (left_front_dist() + left_back_dist()) / 2;
+
+    int error = WALL_DISTANCE - avgDistance;
+    left_front_motor.writeMicroseconds(SERVO_STOP_VALUE - error * Kp);
+    right_front_motor.writeMicroseconds(SERVO_STOP_VALUE - error * Kp);
+    left_rear_motor.writeMicroseconds(SERVO_STOP_VALUE + error * Kp);
+    right_rear_motor.writeMicroseconds(SERVO_STOP_VALUE + error * Kp);
+  }
+
+  ]
 }
