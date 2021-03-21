@@ -551,3 +551,22 @@ void orientation(void)
     }
   }
 }
+
+
+// Yaw Controller
+int yawController (void){
+  /*Returns the control signal for a yaw controller, can be integrated within the go straight for more performance
+  We should actually be able to superimpose all 3 control signals together, I'll discuss with Andrew more in the lab*/
+  int ccwGain = 1500; //same as initialising gain
+  int ccwTurn;
+  float leftFrontDist, leftBackDist, angle;
+  
+  leftFrontDist = left_front_dist();
+  leftBackDist = left_back_dist();
+
+  //approximate sin theta to theta
+  angle = (leftFrontDist - leftBackDist)/separationDist;
+  ccwTurn = angle * ccwGain;
+  ccwTurn = constrain(ccwTurn, -500, 500);
+  return ccwTurn;
+}
