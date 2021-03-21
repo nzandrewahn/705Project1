@@ -117,39 +117,17 @@ STATE running()
 
   // Check if turning count is higher than 4 if yes then return
 
-  // Read Sensor values
-  int newLeft = left_dist();
+  //Read initial sensor value to decide which controller
+  int yaw = 
+
 
   // Store values
-  int prevLeft;
-  int frontDist;
   int cornerCount = 0;
 
   // Decide which way to go based on new value vs old value, so the difference between the old and new value is the error and we exit when front is less than 15cm
   while (frontDist < FRONT_DISTANCE_LIMIT)
   {
-
-    int error = WALL_DISTANCE - newLeft;
-    int thePast = [];
-
-    if (error > 0)
-    {
-      //go right
-      GoEast();
-    }
-    else if (error < 0)
-    {
-      //go left
-      GoWest();
-    }
-    else
-    {
-      //go north
-      GoNorth();
-    }
-
-    frontDist = front_dist();
-    prevLeft = newLeft;
+    
   }
 
   // Run turning function
