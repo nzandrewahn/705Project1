@@ -27,7 +27,7 @@
 //#define NO_BATTERY_V_OK //Uncomment of BATTERY_V_OK if you do not care about battery damage.
 
 #define WALL_DISTANCE (15)
-#define FRONT_DISTANCE_LIMIT (15)
+#define FRONT_DISTANCE_LIMIT (5)
 #define ANTICLOCKWISE (1000)
 #define CLOCKWISE (2000)
 #define STOP (1500)
@@ -123,13 +123,15 @@ STATE initialising()
   SerialCom->println("Enabling Motors...");
   enable_motors();
   SerialCom->println("RUNNING STATE...");
-  orientation();
+  
   if (!is_battery_voltage_OK())
   {
     SerialCom->println("Battery is not okay...");
     return INITIALISING;
   }
 
+  orientation();
+  
   return RUNNING;
 }
 
@@ -144,8 +146,10 @@ STATE running()
   // Decide which way to go based on new value vs old value, so the difference between the old and new value is the error and we exit when front is less than 15cm
   while (frontDist > FRONT_DISTANCE_LIMIT)
   {
-    
+    goStraight();
+    frontDist = front_dist();
   }
+  stop();
   
   // Run turning function
   // Turn 90 deg
@@ -231,10 +235,10 @@ int back_dist()
   return Dis3;
 }
 
-int read_yaw()
-{
-  return 1;
-}
+//int read_yaw()
+//{
+//  return 1;
+//}
 
 ////////////////////////////// Reading Battery Voltage
 
