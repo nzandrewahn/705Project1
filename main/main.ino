@@ -34,6 +34,7 @@
 #define SERVO_STOP_VALUE (1500)
 #define WINDOW_SIZE (300)
 #define YAW_THRESHHOLD (500)
+#define YAW_TOLERANCE (3)
 
 //State machine states
 enum STATE
@@ -65,6 +66,16 @@ int front_dist();
 int Kd = 0;
 int Kp = 30;
 int Ki = 0;
+int separationDist = 19;
+int T = 100;
+int gyroRate = 0;
+int currentAngle = 0;
+int sensorPin = 12;
+int gyroSupplyVoltage = 5;
+int gyroZeroVoltage = 509;
+int gyroSensitivity = 0.007;
+int rotationThreshold = 1.5;
+
 
 //Serial Pointer
 HardwareSerial *SerialCom;
@@ -128,38 +139,26 @@ STATE running()
 
   //Read initial sensor value to decide which controller
   int yaw = 2;
-#define YAW_TOLERANCE (3)
   int frontDist = front_dist();
 
   // Decide which way to go based on new value vs old value, so the difference between the old and new value is the error and we exit when front is less than 15cm
-    while (frontDist > FRONT_DISTANCE_LIMIT)
-    {
-      if (yaw > YAW_TOLERANCE)
-      {
-        //run yaw controller
-        
-      }
-      else
-      {
-        //run straight controller
-        goStraight();
-      }
-    }
-
-
-
+  while (frontDist > FRONT_DISTANCE_LIMIT)
+  {
+    
+  }
+  
   // Run turning function
   // Turn 90 deg
-  //  turn_90();
+  turn_90_gyro();
 
   // Increment no of corners
-  //  cornerCount++;
+  cornerCount++;
 
   // Check if turning count is higher than 4 if yes then return
-  //  if (cornerCount > 4)
-  //  {
-  //    return STOPPED;
-  //  }
+  if (cornerCount > 4)
+  {
+    return STOPPED;
+  }
 
   return RUNNING;
 }
@@ -569,4 +568,57 @@ int yawController (void){
   ccwTurn = angle * ccwGain;
   ccwTurn = constrain(ccwTurn, -500, 500);
   return ccwTurn;
+}
+
+
+
+void turn_90_gyro(void){
+  /*Need to check positives and negatives, and adjust... also need to do a units check to make sure values aren't garbage*/
+  //Take CW to be positive
+  float currentAngle = 0;
+  float error = 90;
+  float rotationalGain = 26.2; //Gain of 1500/180*pi, same gain as the orientation code
+  float angleChange;
+  int tinit, t, motorControl;
+  
+  // convert the 0-1023 signal to 0-5v
+  while (abs(error) > 0.1){ //add more exit conditions if need be
+    tinit = millis();
+    gyroRate = (analogRead(sensorPin) * gyroSupplyVoltage) / 1023; 
+    // find the voltage offset the value of voltage when gyro is zero (still)
+    gyroRate -= (gyroZeroVoltage / 1023 * 5); 
+    // read out voltage divided the gyro sensitivity to calculate the angular velocity
+    float angularVelocity = -gyroRate / gyroSensitivity;  // Ensure that +ve velocity is taken in the CW direction
+    // if the angular velocity is less than the threshold, ignore it
+    if ((angularVelocity >= rotationThreshold) || (angularVelocity <= -rotationThreshold)) { // we are running a loop in T. one second will run (1000/T).
+      angleChange = angularVelocity / (1000 / T);
+      
+      currentAngle += angleChange; //check sign
+    }  
+    
+    // keep the angle between 0-360 - for P control, don't
+    /*if (currentAngle < 0)    {
+      currentAngle += 360;
+    }  else if (currentAngle > 359) {
+      currentAngle -= 360;
+    } */
+    
+    error = 90 - currentAngle;
+
+    motorControl = error * rotationalGain;
+    motorControl = constrain(motorControl, -500, 500);
+
+    left_front_motor.writeMicroseconds(1500 + motorControl);
+    left_rear_motor.writeMicroseconds(1500 + motorControl);
+    right_rear_motor.writeMicroseconds(1500 + motorControl);
+    right_front_motor.writeMicroseconds(1500 + motorControl);
+
+    //may not be necessary, CHECK
+    t = millis() - tinit;
+
+    SerialCom -> print ("time: ");
+    SerialCom -> println(t);
+
+    delay (T - t);
+  }
 }
