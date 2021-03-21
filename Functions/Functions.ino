@@ -21,7 +21,7 @@ const byte back_sensor = A11;
 const byte front_sensor = A15;
 
 int speed_val;
-float separationDist = 19;
+float separationDist = 19; //19 cm between the two left sensors
 
 
 //Set these values
@@ -78,7 +78,6 @@ float back_dist (void){
 
 //INITIALISING
 void orientation (void) {
-  float separationDist = 19; //19 cm between the two left sensors
   float leftFrontDist, leftBackDist, dist; 
   //Initialise to garbage values
   float error = 6.2;
@@ -93,31 +92,31 @@ void orientation (void) {
   while(((abs(angle) > 0.0349) || (abs(error) > 0.2)) && (t < 2000)){
     leftFrontDist = left_front_dist();
     leftBackDist = left_back_dist();
+    
     //distance from the wall
     dist = (leftFrontDist + leftBackDist)/2;
     //approximate sin theta to theta
     angle = (leftFrontDist - leftBackDist)/separationDist;
 
+    //ensure that the left sensors are reading the distance values from the left wall before controlling distance from the wall
     if ((angle < 3.14/8) && (angle > -3.14/8)) {
-      //Reference angle is 0, control signal for turning CCW
+      //Reference angle is 0, therefore angle is the error
+      //control signal for turning CCW
       ccwTurn = angle * ccwGain;
       //6.2 = 15 - 8.8 (dist from centre of robot to sensor)
       error = 6.2 - dist;
       //Control signal for strafing right
       strafeRight = error * strafeGain ;
-      strafeRight = (strafeRight > 500) ? 500 : strafeRight;
     } else{
       ccwTurn = 500;
       strafeRight = 0;
     }
 
     //Control signal for front motors
-    frontControl = (-ccwTurn + strafeRight > 500) ? 500 : -ccwTurn + strafeRight;
-    frontControl = (-ccwTurn + strafeRight < -500) ? -500 : frontControl;
+    frontControl = constrain((-ccwTurn + strafeRight), -500, 500);
 
     //Control signal for rear motors
-    rearControl = (-ccwTurn - strafeRight > 500) ? 500 : -ccwTurn - strafeRight;
-    rearControl = (-ccwTurn - strafeRight < -500) ? -500 : rearControl;
+    rearControl = constrain((-ccwTurn - strafeRight), -500, 500);
     
     left_font_motor.writeMicroseconds(1500 + frontControl);
     left_rear_motor.writeMicroseconds(1500 + rearControl);
@@ -188,8 +187,6 @@ void turn_90_gyro(void){
 
     delay (T - t);
   }
-  
-  stop();
 }
 
 void turn_90 (void){
@@ -197,7 +194,7 @@ void turn_90 (void){
   float error = 20; //initialise error to garbage value
 
   int t, cwTurn, strafeRight, frontControl, rearControl;
-  int cwGain = 1500;
+  int cwGain = -1500; //negative as the turn is in the opposite direction of ccwGain
   int strafeGain = 50;
   int separationDist = 19;
   int backDist = back_dist();
@@ -205,7 +202,7 @@ void turn_90 (void){
   int tinit = millis();
 
   //turns for an amount to get sensors past the corner - replace with gyro code
-  while((backDist > 30) || (backDist < 2) || t < 1000){
+  while((backDist > 30) || (backDist < 2) || t < 1000){ //Adjust t limit or do clever things with backDist
     backDist = back_dist();
     t = millis() - tinit;
     left_font_motor.writeMicroseconds(2000);
@@ -217,16 +214,18 @@ void turn_90 (void){
   while(((abs(angle) > 0.0349) || (abs(error) > 0.2)) && (t < 2000)){
     leftFrontDist = left_front_dist();
     leftBackDist = left_back_dist();
+    
     //distance from the wall
     dist = (leftFrontDist + leftBackDist)/2;
     //approximate sin theta to theta
     angle = (leftFrontDist - leftBackDist)/separationDist;
 
     if ((angle < 3.14/8) && (angle > -3.14/8)) {
-      //Reference angle is 0, control signal for turning CCW
+      //Reference angle is 0, control signal for turning CW
       cwTurn = angle * cwGain;
       //6.2 = 15 - 8.8 (dist from centre of robot to sensor)
       error = 6.2 - dist;
+      
       //Control signal for strafing right
       strafeRight = error * strafeGain ;
       strafeRight = (strafeRight > 500) ? 500 : strafeRight;
