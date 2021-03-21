@@ -377,32 +377,28 @@ void goStraight(void){
   int front_offset = constrain(error*Kp,0,500);
   int rear_offset = constrain(error*Kp,0,500);
 
-  while (frontDist < FRONT_DISTANCE_LIMIT){
-    if ((error > TOLERANCE) || (error < -TOLERANCE)){
-      while (error > TOLERANCE || error < -TOLERANCE)
-      {
-        front_offset = constrain(error*Kp,-500,500);
-        rear_offset = -constrain(error*Kp,-500,500);
-        
-        left_front_motor.writeMicroseconds(SERVO_STOP_VALUE + front_offset);
-        right_front_motor.writeMicroseconds(SERVO_STOP_VALUE + front_offset);
-        left_rear_motor.writeMicroseconds(SERVO_STOP_VALUE + rear_offset);
-        right_rear_motor.writeMicroseconds(SERVO_STOP_VALUE + rear_offset);
-  
-        avgDistance = (left_front_dist() + left_back_dist())/2;
-        error = WALL_DISTANCE - avgDistance;
-        Serial.print("Error: ");
-        Serial.println(error);
-      }
-    } else {
-      Serial.println("Going Forward");
-      // Run turning function
-      GoForwards(); 
+  if ((error > TOLERANCE) || (error < -TOLERANCE)){
+    while (error > TOLERANCE || error < -TOLERANCE)
+    {
+      front_offset = constrain(error*Kp,-500,500);
+      rear_offset = -constrain(error*Kp,-500,500);
+      
+      left_front_motor.writeMicroseconds(SERVO_STOP_VALUE + front_offset);
+      right_front_motor.writeMicroseconds(SERVO_STOP_VALUE + front_offset);
+      left_rear_motor.writeMicroseconds(SERVO_STOP_VALUE + rear_offset);
+      right_rear_motor.writeMicroseconds(SERVO_STOP_VALUE + rear_offset);
+
+      avgDistance = (left_front_dist() + left_back_dist())/2;
+      error = WALL_DISTANCE - avgDistance;
+      Serial.print("Error: ");
+      Serial.println(error);
     }
-  }
+  } else {
+    Serial.println("Going Forward");
+    // Run turning function
+    GoForwards(); 
+  }  
 }
-
-
 
 
 void turn_90 (void){
@@ -420,10 +416,10 @@ void turn_90 (void){
   while((backDist > 30) || (backDist < 2) || t < 1000){
     backDist = back_dist();
     t = millis() - tinit;
-    left_font_motor.writeMicroseconds(2000);
+    left_front_motor.writeMicroseconds(2000);
     left_rear_motor.writeMicroseconds(2000);
     right_rear_motor.writeMicroseconds(2000);
-    right_font_motor.writeMicroseconds(2000);
+    right_front_motor.writeMicroseconds(2000);
   }
 
   while(((abs(angle) > 0.0349) || (abs(error) > 0.2)) && (t < 2000)){
@@ -455,10 +451,10 @@ void turn_90 (void){
     rearControl = (cwTurn - strafeRight > 500) ? 500 : -cwTurn - strafeRight;
     rearControl = (cwTurn - strafeRight < -500) ? -500 : rearControl;
     
-    left_font_motor.writeMicroseconds(1500 + frontControl);
+    left_front_motor.writeMicroseconds(1500 + frontControl);
     left_rear_motor.writeMicroseconds(1500 + rearControl);
     right_rear_motor.writeMicroseconds(1500 + rearControl);
-    right_font_motor.writeMicroseconds(1500 + frontControl);
+    right_front_motor.writeMicroseconds(1500 + frontControl);
     
     SerialCom -> print("angle = ");
     SerialCom -> println(angle);
@@ -516,10 +512,10 @@ void orientation (void) {
     rearControl = (-ccwTurn - strafeRight > 500) ? 500 : -ccwTurn - strafeRight;
     rearControl = (-ccwTurn - strafeRight < -500) ? -500 : rearControl;
     
-    left_font_motor.writeMicroseconds(1500 + frontControl);
+    left_front_motor.writeMicroseconds(1500 + frontControl);
     left_rear_motor.writeMicroseconds(1500 + rearControl);
     right_rear_motor.writeMicroseconds(1500 + rearControl);
-    right_font_motor.writeMicroseconds(1500 + frontControl);
+    right_front_motor.writeMicroseconds(1500 + frontControl);
     
     SerialCom -> print("angle = ");
     SerialCom -> println(angle);
