@@ -43,7 +43,12 @@ void setup(void){
   SerialCom ->println("Starting");
   enable_motors();
   //orientation();
-  turn_90_gyro();
+  //turn_90_gyro();
+  left_font_motor.writeMicroseconds(1500 + 75);
+  left_rear_motor.writeMicroseconds(1500 + 75);
+  right_rear_motor.writeMicroseconds(1500 + 75);
+  right_font_motor.writeMicroseconds(1500 + 75);
+  delay(1000);
   stop();
 }
 void loop(void){}
