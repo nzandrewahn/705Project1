@@ -61,21 +61,21 @@ Servo turret_motor;
 float left_dist();
 float right_dist();
 float front_dist();
+int cornerCount = 0;
 
 //Tuning Parameters
 int Kd = 0;
 int Kp = 30;
 int Ki = 0;
 int separationDist = 19;
-int T = 100;
-int gyroRate = 0;
-int currentAngle = 0;
-int sensorPin = 12;
-int gyroSupplyVoltage = 5;
-int gyroZeroVoltage = 509;
-int gyroSensitivity = 0.007;
-int rotationThreshold = 1.5;
 
+int T = 100;
+int gyroPin = 12;
+float gyroSupplyVoltage = 5;
+float gyroZeroVoltage = 509;
+float gyroSensitivity = 0.007;
+float rotationThreshold = 1.5;
+float gyroRate = 0;
 
 //Serial Pointer
 HardwareSerial *SerialCom;
@@ -137,7 +137,7 @@ STATE initialising()
 
 STATE running()
 {
-  int cornerCount = 0;
+ // int cornerCount = 0;
 
   //Read initial sensor value to decide which controller
   int yaw = 2;
@@ -146,20 +146,24 @@ STATE running()
   // Decide which way to go based on new value vs old value, so the difference between the old and new value is the error and we exit when front is less than 15cm
   goStraight();
 
+//Serial.println("shucks");
   //stop();
-  
-  // Run turning function
-  // Turn 90 deg
-  turn_90_gyro();
 
   // Increment no of corners
   cornerCount++;
 
   // Check if turning count is higher than 4 if yes then return
-  if (cornerCount > 4)
+  if (cornerCount >= 4)
   {
+    stop();
     return STOPPED;
   }
+  
+  // Run turning function
+  // Turn 90 deg
+  turn_90_gyro();
+
+  
 
   return RUNNING;
 }
@@ -362,6 +366,9 @@ void goStraight(void)
   int TOLERANCE = 2;
   int left_error = WALL_DISTANCE - avgDistance;
   int Kp = 50;
+   int ccwGain = 2000; //same as initialising gain
+    int ccwTurn;
+    float leftFrontDist, leftBackDist, angle;
 //  int front_offset = constrain(error * Kp, 0, 500);
 //  int rear_offset = constrain(error * Kp, 0, 500);
 
@@ -373,60 +380,43 @@ void goStraight(void)
   
   int left_front_motor_control, right_front_motor_control, left_rear_motor_control, right_rear_motor_control;
 
-  Serial.println("Entered goStraight Function");
-  Serial.print("forward error: ");
-  Serial.println(forward_error);
+  SerialCom -> println("Entered goStraight Function");
+  SerialCom -> print("forward error: ");
+  SerialCom -> println(forward_error);
 
   while(abs(forward_error) > 1){
     forward_error = FRONT_DISTANCE_LIMIT - front_dist();
     forward_control = forward_error * forward_gain;
+    
+    leftFrontDist = left_front_dist();
+    leftBackDist = left_back_dist();
+  
+    //approximate sin theta to theta
+    angle = (leftFrontDist - leftBackDist)/separationDist;
+    ccwTurn = angle * ccwGain;
 
-    avgDistance = (left_front_dist() + left_back_dist()) / 2;
+    avgDistance = (leftFrontDist + leftBackDist) / 2;
     left_error = WALL_DISTANCE - avgDistance;
     left_control = left_error * Kp; //INCREASE AND FIX
 
     forward_error = FRONT_DISTANCE_LIMIT - front_dist();
     forward_control = constrain(forward_error * forward_gain, - 500 + abs(left_control), 500 - abs(left_control));
     
-    left_front_motor_control = constrain(forward_control + left_control, -500, 500);
-    right_front_motor_control = constrain(-forward_control + left_control, -500, 500);
-    left_rear_motor_control = constrain(forward_control - left_control, -500, 500);
-    right_rear_motor_control = constrain(-forward_control - left_control, -500, 500);
+    left_front_motor_control = constrain(forward_control + left_control - ccwTurn, -500, 500);
+    right_front_motor_control = constrain(-forward_control + left_control - ccwTurn, -500, 500);
+    left_rear_motor_control = constrain(forward_control - left_control - ccwTurn, -500, 500);
+    right_rear_motor_control = constrain(-forward_control - left_control - ccwTurn, -500, 500);
 
     left_front_motor.writeMicroseconds(SERVO_STOP_VALUE + left_front_motor_control);
     right_front_motor.writeMicroseconds(SERVO_STOP_VALUE + right_front_motor_control);
     left_rear_motor.writeMicroseconds(SERVO_STOP_VALUE + left_rear_motor_control);
     right_rear_motor.writeMicroseconds(SERVO_STOP_VALUE + right_rear_motor_control);    
-    Serial.print("left error: ");
-    Serial.print(left_control);
-    Serial.print("forward error: ");
-    Serial.println(forward_control);
+//    Serial.print("left error: ");
+//    Serial.print(left_control);
+//    Serial.print("forward error: ");
+//    Serial.println(forward_control);
   }
-
-/*  if ((left_error > TOLERANCE) || (left_error < -TOLERANCE))
-  {
-    while (left_error > TOLERANCE || left_error < -TOLERANCE)
-    {
-      front_offset = constrain(left_error * Kp, -500, 500);
-      rear_offset = -constrain(left_error * Kp, -500, 500);
-
-      left_front_motor.writeMicroseconds(SERVO_STOP_VALUE + front_offset);
-      right_front_motor.writeMicroseconds(SERVO_STOP_VALUE + front_offset);
-      left_rear_motor.writeMicroseconds(SERVO_STOP_VALUE + rear_offset);
-      right_rear_motor.writeMicroseconds(SERVO_STOP_VALUE + rear_offset);
-
-      avgDistance = (left_front_dist() + left_back_dist()) / 2;
-      left_error = WALL_DISTANCE - avgDistance;
-      Serial.print("Error: ");
-      Serial.println(error);
-    }
-  }
-  else
-  {
-    Serial.println("Going Forward");
-    // Run turning function
-    GoForwards();
-  }*/
+  //Serial.println("FREEEDOM");
 }
 
 
@@ -526,17 +516,22 @@ void turn_90_gyro(void){
   float currentAngle = 0;
   float error = 90;
   float rotationalGain = 26.2; //Gain of 1500/180*pi, same gain as the orientation code
-  float angleChange;
+  float angleChange, angularVelocity;
   int tinit, t, motorControl;
   
+  //SerialCom ->println();
   // convert the 0-1023 signal to 0-5v
-  while (abs(error) > 0.1){ //add more exit conditions if need be
+  while (abs(error) > 2){ //add more exit conditions if need be
+    
     tinit = millis();
-    gyroRate = (analogRead(sensorPin) * gyroSupplyVoltage) / 1023; 
+    gyroRate = (analogRead(gyroPin) * gyroSupplyVoltage) / 1023; 
     // find the voltage offset the value of voltage when gyro is zero (still)
     gyroRate -= (gyroZeroVoltage / 1023 * 5); 
+    
     // read out voltage divided the gyro sensitivity to calculate the angular velocity
-    float angularVelocity = -gyroRate / gyroSensitivity;  // Ensure that +ve velocity is taken in the CW direction
+    angularVelocity = gyroRate / gyroSensitivity;  // Ensure that +ve velocity is taken in the CW direction
+    SerialCom ->println(angularVelocity);
+    
     // if the angular velocity is less than the threshold, ignore it
     if ((angularVelocity >= rotationThreshold) || (angularVelocity <= -rotationThreshold)) { // we are running a loop in T. one second will run (1000/T).
       angleChange = angularVelocity / (1000 / T);
@@ -555,10 +550,11 @@ void turn_90_gyro(void){
     right_front_motor.writeMicroseconds(1500 + motorControl);
 
     //may not be necessary, CHECK
+    //delay(10);
     t = millis() - tinit;
 
     SerialCom -> print ("time: ");
-    SerialCom -> println(t);
+    SerialCom -> println(tinit);
 
     delay (T - t);
   }
