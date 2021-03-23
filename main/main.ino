@@ -351,13 +351,6 @@ void fast_flash_double_LED_builtin()
 }
 
 // Motor Commands
-/*void GoForwards(void)
-{
-  left_front_motor.writeMicroseconds(CLOCKWISE);
-  right_front_motor.writeMicroseconds(ANTICLOCKWISE);
-  left_rear_motor.writeMicroseconds(CLOCKWISE);
-  right_rear_motor.writeMicroseconds(ANTICLOCKWISE);
-}*/
 
 ////////////////// Controllers
 void goStraight(void)
@@ -411,12 +404,13 @@ void goStraight(void)
     right_front_motor.writeMicroseconds(SERVO_STOP_VALUE + right_front_motor_control);
     left_rear_motor.writeMicroseconds(SERVO_STOP_VALUE + left_rear_motor_control);
     right_rear_motor.writeMicroseconds(SERVO_STOP_VALUE + right_rear_motor_control);    
-//    Serial.print("left error: ");
-//    Serial.print(left_control);
-//    Serial.print("forward error: ");
-//    Serial.println(forward_control);
+    Serial.print("left error: ");
+    Serial.print(left_error);
+    Serial.print("forward error: ");
+    Serial.println(forward_error);
+    Serial.print("CCW error: ");
+    Serial.println(angle);
   }
-  //Serial.println("FREEEDOM");
 }
 
 
@@ -470,11 +464,11 @@ void orientation(void)
     right_rear_motor.writeMicroseconds(1500 + rearControl);
     right_front_motor.writeMicroseconds(1500 + frontControl);
 
-    SerialCom->print("angle = ");
-    SerialCom->println(angle);
-    SerialCom->print(", error = ");
-    SerialCom->println(error);
-    SerialCom->println(t);
+//    SerialCom->print("angle = ");
+//    SerialCom->println(angle);
+//    SerialCom->print(", error = ");
+//    SerialCom->println(error);
+//    SerialCom->println(t);
 
     //If the control signals are low for too long, start the timer to quit so that the motors don't burn out
     if ((abs(strafeRight) < 50) && (abs(ccwTurn) < 50))
