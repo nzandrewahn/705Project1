@@ -27,6 +27,7 @@
 //#define NO_BATTERY_V_OK //Uncomment of BATTERY_V_OK if you do not care about battery damage.
 
 #define WALL_DISTANCE (6.2)
+#define WALL_DISTANCE (15)
 #define FRONT_DISTANCE_LIMIT (5)
 #define ANTICLOCKWISE (1000)
 #define CLOCKWISE (2000)
@@ -61,21 +62,20 @@ Servo turret_motor;
 float left_dist();
 float right_dist();
 float front_dist();
-int cornerCount = 0;
 
 //Tuning Parameters
 int Kd = 0;
 int Kp = 30;
 int Ki = 0;
 int separationDist = 19;
-
 int T = 100;
-int gyroPin = 12;
+int gyroRate = 0;
+float currentAngle = 0;
+int sensorPin = 12;
 float gyroSupplyVoltage = 5;
 float gyroZeroVoltage = 509;
 float gyroSensitivity = 0.007;
 float rotationThreshold = 1.5;
-float gyroRate = 0;
 
 //Serial Pointer
 HardwareSerial *SerialCom;
@@ -137,17 +137,23 @@ STATE initialising()
 
 STATE running()
 {
- // int cornerCount = 0;
+  int cornerCount = 0;
 
   //Read initial sensor value to decide which controller
   int yaw = 2;
   int frontDist = front_dist();
 
   // Decide which way to go based on new value vs old value, so the difference between the old and new value is the error and we exit when front is less than 15cm
-  goStraight();
-
-//Serial.println("shucks");
-  //stop();
+  while (frontDist > FRONT_DISTANCE_LIMIT)
+  {
+    goStraight();
+    frontDist = front_dist();
+  }
+  stop();
+  
+  // Run turning function
+  // Turn 90 deg
+  turn_90_gyro();
 
   // Increment no of corners
   cornerCount++;
@@ -532,6 +538,13 @@ void turn_90_gyro(void){
       
       currentAngle += angleChange; //check sign
     }  
+    
+    // keep the angle between 0-360 - for P control, don't
+    /*if (currentAngle < 0)    {
+      currentAngle += 360;
+    }  else if (currentAngle > 359) {
+      currentAngle -= 360;
+    } */
     
     error = 90 - currentAngle;
 
