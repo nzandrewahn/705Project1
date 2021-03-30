@@ -24,7 +24,7 @@
 //#define NO_BATTERY_V_OK //Uncomment of BATTERY_V_OK if you do not care about battery damage.
 
 #define WALL_DISTANCE (6.2)
-#define FRONT_DISTANCE_LIMIT (5)
+#define FRONT_DISTANCE_LIMIT (6)
 #define ANTICLOCKWISE (1000)
 #define CLOCKWISE (2000)
 #define STOP (1500)
@@ -369,7 +369,7 @@ void goStraight(void)
   int left_control = constrain(left_error * Kp, -100,100);
 
   float forward_error = FRONT_DISTANCE_LIMIT - front_dist();
-  float forward_gain = -50;
+  float forward_gain = -30;
   int forward_control = constrain(forward_error * forward_gain, -400, 400);
   
   int left_front_motor_control, right_front_motor_control, left_rear_motor_control, right_rear_motor_control;
