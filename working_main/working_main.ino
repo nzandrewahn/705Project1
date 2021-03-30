@@ -355,12 +355,10 @@ void goStraight(void)
   float avgDistance = (left_front_dist() + left_back_dist()) / 2;
   int TOLERANCE = 2;
   int left_error = WALL_DISTANCE - avgDistance;
-  int left_I_error = 0;
-  int left_I_gain = 2;
   int Kp = 50;
-  int ccwGain = 2000; //same as initialising gain
-  int ccwTurn;
-  float leftFrontDist, leftBackDist, angle;
+   int ccwGain = 2000; //same as initialising gain
+    int ccwTurn;
+    float leftFrontDist, leftBackDist, angle;
 //  int front_offset = constrain(error * Kp, 0, 500);
 //  int rear_offset = constrain(error * Kp, 0, 500);
 
@@ -389,14 +387,7 @@ void goStraight(void)
 
     avgDistance = (leftFrontDist + leftBackDist) / 2;
     left_error = WALL_DISTANCE - avgDistance;
-
-    if(abs(left_error) < 4){
-      left_I_error += left_error;
-    } else {
-      left_I_error = 0;
-    }
-    
-    left_control = constrain(left_error * Kp + left_I_gain, -500,500); //INCREASE AND FIX
+    left_control = left_error * Kp; //INCREASE AND FIX
 
     forward_error = FRONT_DISTANCE_LIMIT - front_dist();
     forward_control = constrain(forward_error * forward_gain, - 500 + abs(left_control), 500 - abs(left_control));
