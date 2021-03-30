@@ -159,6 +159,7 @@ STATE running()
   // Run turning function
   // Turn 90 deg
   turn_90_gyro();
+  orientation();
 
   
 
@@ -353,13 +354,14 @@ void fast_flash_double_LED_builtin()
 void goStraight(void)
 {
   float avgDistance = (left_front_dist() + left_back_dist()) / 2;
-  int TOLERANCE = 2;
-  int left_error = WALL_DISTANCE - avgDistance;
-  int left_I_error = 0;
-  int left_I_gain = 2;
-  int Kp = 50;
+  float left_error = WALL_DISTANCE - avgDistance;
+  float left_I_error = 0;
+  int left_I_gain = 1;
+  int Kp = 100;
   int ccwGain = 2000; //same as initialising gain
-  int ccwTurn;
+  int ccw_I_gain = 10;
+  float ccw_I_error = 0;
+  float ccwTurn;
   float leftFrontDist, leftBackDist, angle;
 //  int front_offset = constrain(error * Kp, 0, 500);
 //  int rear_offset = constrain(error * Kp, 0, 500);
@@ -367,7 +369,7 @@ void goStraight(void)
   int left_control = constrain(left_error * Kp, -100,100);
 
   float forward_error = FRONT_DISTANCE_LIMIT - front_dist();
-  int forward_gain = -50;
+  float forward_gain = -50;
   int forward_control = constrain(forward_error * forward_gain, -400, 400);
   
   int left_front_motor_control, right_front_motor_control, left_rear_motor_control, right_rear_motor_control;
@@ -385,8 +387,9 @@ void goStraight(void)
   
     //approximate sin theta to theta
     angle = (leftFrontDist - leftBackDist)/separationDist;
-    ccwTurn = angle * ccwGain;
-
+    ccw_I_error += angle;
+    ccwTurn = angle * ccwGain + ccw_I_error * ccw_I_gain;
+    
     avgDistance = (leftFrontDist + leftBackDist) / 2;
     left_error = WALL_DISTANCE - avgDistance;
 
@@ -399,7 +402,7 @@ void goStraight(void)
     left_control = constrain(left_error * Kp + left_I_gain, -500,500); //INCREASE AND FIX
 
     forward_error = FRONT_DISTANCE_LIMIT - front_dist();
-    forward_control = constrain(forward_error * forward_gain, - 500 + abs(left_control), 500 - abs(left_control));
+    forward_control = constrain(forward_error * forward_gain, - 500 + abs(left_control) + abs(ccwTurn), 500 - abs(left_control) - abs(ccwTurn));
     
     left_front_motor_control = constrain(forward_control + left_control - ccwTurn, -500, 500);
     right_front_motor_control = constrain(-forward_control + left_control - ccwTurn, -500, 500);
@@ -417,6 +420,11 @@ void goStraight(void)
     Serial.print("CCW error: ");
     Serial.println(angle);
   }
+  
+  left_front_motor.writeMicroseconds(SERVO_STOP_VALUE );
+  right_front_motor.writeMicroseconds(SERVO_STOP_VALUE );
+  left_rear_motor.writeMicroseconds(SERVO_STOP_VALUE );
+  right_rear_motor.writeMicroseconds(SERVO_STOP_VALUE);    
 }
 
 
@@ -428,11 +436,11 @@ void orientation(void)
   float angle = 3.14 / 2;
 
   int ccwTurn, strafeRight, frontControl, rearControl, tinit;
-  int ccwGain = 1500;
-  int strafeGain = 50;
+  int ccwGain = 2000;
+  int strafeGain = 100;
   int t = 0;
 
-  while (((abs(angle) > 0.0349) || (abs(error) > 0.2)) && (t < 2000))
+  while (((abs(angle) > 0.0349) || (abs(error) > 0.2)) && (t < 1000))
   {
     leftFrontDist = left_front_dist();
     leftBackDist = left_back_dist();
@@ -515,7 +523,7 @@ void turn_90_gyro(void){
   //Take CW to be positive
   float currentAngle = 0;
   float error = 90;
-  float rotationalGain = 26.2; //Gain of 1500/180*pi, same gain as the orientation code
+  float rotationalGain = 25;//26.2; //Gain of 1500/180*pi, same gain as the orientation code
   float angleChange, angularVelocity;
   int tinit, t, motorControl;
   
@@ -558,4 +566,9 @@ void turn_90_gyro(void){
 
     delay (T - t);
   }
+  motorControl = 0;
+  left_front_motor.writeMicroseconds(1500 + motorControl);
+    left_rear_motor.writeMicroseconds(1500 + motorControl);
+    right_rear_motor.writeMicroseconds(1500 + motorControl);
+    right_front_motor.writeMicroseconds(1500 + motorControl);
 }
