@@ -59,13 +59,17 @@ float left_dist();
 float right_dist();
 float front_dist();
 int cornerCount = 0;
+bool complete = 0;
 
 //Tuning Parameters
 int Kd = 0;
 int Kp = 30;
 int Ki = 0;
+
+// Distance between the two IR sensors
 int separationDist = 19;
 
+//Gyro variables
 int T = 100;
 int gyroPin = 12;
 float gyroSupplyVoltage = 5;
@@ -98,15 +102,15 @@ void loop(void) //main loop
   //Finite-state machine Code
   switch (machine_state)
   {
-  case INITIALISING:
-    machine_state = initialising();
-    break;
-  case RUNNING: //Lipo Battery Volage OK
-    machine_state = running();
-    break;
-  case STOPPED: //Stop of Lipo Battery voltage is too low, to protect Battery
-    machine_state = stopped();
-    break;
+    case INITIALISING:
+      machine_state = initialising();
+      break;
+    case RUNNING: //Lipo Battery Volage OK
+      machine_state = running();
+      break;
+    case STOPPED: //Stop of Lipo Battery voltage is too low, to protect Battery
+      machine_state = stopped();
+      break;
   };
 }
 
@@ -120,48 +124,35 @@ STATE initialising()
   SerialCom->println("Enabling Motors...");
   enable_motors();
   SerialCom->println("RUNNING STATE...");
-  
+
   if (!is_battery_voltage_OK())
   {
     SerialCom->println("Battery is not okay...");
     return INITIALISING;
   }
 
-  orientation();
-  
   return RUNNING;
 }
 
 STATE running()
 {
- // int cornerCount = 0;
-
-  //Read initial sensor value to decide which controller
-  int yaw = 2;
-  int frontDist = front_dist();
-
-  // Decide which way to go based on new value vs old value, so the difference between the old and new value is the error and we exit when front is less than 15cm
+  //From the previous command the robot should be oriented
+  orientation();
   goStraight();
 
-//Serial.println("shucks");
-  //stop();
-
-  // Increment no of corners
+  // Increment number of corners
   cornerCount++;
 
   // Check if turning count is higher than 4 if yes then return
   if (cornerCount >= 4)
   {
     stop();
+    complete = 1;
     return STOPPED;
   }
-  
-  // Run turning function
-  // Turn 90 deg
-  turn_90_gyro();
-  orientation();
 
-  
+  // Run turning function and orient against the wall if the turning limit has not been reached
+  turn_90_gyro();
 
   return RUNNING;
 }
@@ -179,27 +170,30 @@ STATE stopped()
   { //print massage every 500ms
     previous_millis = millis();
     SerialCom->println("STOPPED---------");
+    //Only check whether the robot can revert to running state if it has not completed its loop
+    if (!complete) {
 
 #ifndef NO_BATTERY_V_OK
-    //500ms timed if statement to check lipo and output speed settings
-    if (is_battery_voltage_OK())
-    {
-      SerialCom->print("Lipo OK waiting of voltage Counter 10 < ");
-      SerialCom->println(counter_lipo_voltage_ok);
-      counter_lipo_voltage_ok++;
-      if (counter_lipo_voltage_ok > 10)
-      { //Making sure lipo voltage is stable
-        counter_lipo_voltage_ok = 0;
-        enable_motors();
-        SerialCom->println("Lipo OK returning to RUN STATE");
-        return RUNNING;
+      //500ms timed if statement to check lipo and output speed settings
+      if (is_battery_voltage_OK())
+      {
+        SerialCom->print("Lipo OK waiting of voltage Counter 10 < ");
+        SerialCom->println(counter_lipo_voltage_ok);
+        counter_lipo_voltage_ok++;
+        if (counter_lipo_voltage_ok > 10)
+        { //Making sure lipo voltage is stable
+          counter_lipo_voltage_ok = 0;
+          enable_motors();
+          SerialCom->println("Lipo OK returning to RUN STATE");
+          return RUNNING;
+        }
       }
-    }
-    else
-    {
-      counter_lipo_voltage_ok = 0;
-    }
+      else
+      {
+        counter_lipo_voltage_ok = 0;
+      }
 #endif
+    }
   }
   return STOPPED;
 }
@@ -208,28 +202,30 @@ STATE stopped()
 
 ////////// Reading Sensor
 
-////////// Reading Sensor
-
 float left_front_dist()
 {
+  //Returns the distance read by the front left IR sensor
   float Dis2 = 1 / (0.0005 * analogRead(A7) - 0.0101);
   return Dis2;
 }
 
 float left_back_dist()
 {
+  //Returns the distance read by the back left IR sensor
   float Dis1 = 1 / (0.0005 * analogRead(A4) - 0.0078);
   return Dis1;
 }
 
 float front_dist()
 {
+  //Returns the distance read by the front IR sensor
   float Dis4 = (1 / (0.0002 * analogRead(A15) - 0.0051) - 2.5);
   return Dis4;
 }
 
 float back_dist()
 {
+  //Returns the distance read by the back IR sensor
   float Dis3 = (1 / (0.0002 * analogRead(A11) - 0.0068) - 2.5);
   return Dis3;
 }
@@ -348,62 +344,62 @@ void fast_flash_double_LED_builtin()
   }
 }
 
-// Motor Commands
-
 ////////////////// Controllers
 void goStraight(void)
 {
-  float avgDistance = (left_front_dist() + left_back_dist()) / 2;
-  float left_error = WALL_DISTANCE - avgDistance;
-  float left_I_error = 0;
-  int left_I_gain = 1;
-  int Kp = 100;
-  int ccwGain = 2000; //same as initialising gain
-  int ccw_I_gain = 10;
-  float ccw_I_error = 0;
-  float ccwTurn;
-  float leftFrontDist, leftBackDist, angle;
-//  int front_offset = constrain(error * Kp, 0, 500);
-//  int rear_offset = constrain(error * Kp, 0, 500);
+  float leftFrontDist = left_front_dist();
+  float leftBackDist = left_back_dist();
 
-  int left_control = constrain(left_error * Kp, -100,100);
+  float avgDistance = 0;    //Average distance from the left wall
+  float left_error = 0;     //Error from the distance of the wall that was set
+  float left_I_error = 0;   //Integral of the left error
+  float left_I_gain = 1;    //Left controller I gain
+  int left_P_gain = 100;    //Left controller P gain
+  int left_control;         //Control action for left controller
 
-  float forward_error = FRONT_DISTANCE_LIMIT - front_dist();
-  float forward_gain = -30;
-  int forward_control = constrain(forward_error * forward_gain, -400, 400);
-  
+  float angle;              //The angle from being straight from the wall
+  float ccw_I_error = 0;    //Angle controller integral error
+  int ccwGain = 2000;       //Angle controller P gain, same as initialising gain
+  float ccw_I_gain = 10;    //Angle controller I gain
+  float ccwTurn;            //Control action for angle controller
+
+  float forward_error = 10; //Error from the desired distance at the front of the wall
+  float forward_gain = -30; //Front controller P gain
+  int forward_control = 0;  //Control action for front controller
+
+  //Control actions for each motor
   int left_front_motor_control, right_front_motor_control, left_rear_motor_control, right_rear_motor_control;
 
   SerialCom -> println("Entered goStraight Function");
   SerialCom -> print("forward error: ");
   SerialCom -> println(forward_error);
 
-  while(abs(forward_error) > 1){
+  while (abs(forward_error) > 1) {
     forward_error = FRONT_DISTANCE_LIMIT - front_dist();
     forward_control = forward_error * forward_gain;
-    
+
     leftFrontDist = left_front_dist();
     leftBackDist = left_back_dist();
-  
+
     //approximate sin theta to theta
-    angle = (leftFrontDist - leftBackDist)/separationDist;
+    angle = (leftFrontDist - leftBackDist) / separationDist;
     ccw_I_error += angle;
-    ccwTurn = angle * ccwGain + ccw_I_error * ccw_I_gain;
-    
+    ccwTurn = constrain(int(angle * ccwGain + ccw_I_error * ccw_I_gain), -500, 500);
+
     avgDistance = (leftFrontDist + leftBackDist) / 2;
     left_error = WALL_DISTANCE - avgDistance;
 
-    if(abs(left_error) < 4){
+    if (abs(left_error) < 4) {
       left_I_error += left_error;
     } else {
       left_I_error = 0;
     }
-    
-    left_control = constrain(left_error * Kp + left_I_gain, -500,500); //INCREASE AND FIX
+
+    left_control = constrain(int(left_error * left_P_gain + left_I_error * left_I_gain), -500 + abs(ccwTurn), 500 - abs(ccwTurn)); // TUNE
 
     forward_error = FRONT_DISTANCE_LIMIT - front_dist();
     forward_control = constrain(forward_error * forward_gain, - 500 + abs(left_control) + abs(ccwTurn), 500 - abs(left_control) - abs(ccwTurn));
-    
+
     left_front_motor_control = constrain(forward_control + left_control - ccwTurn, -500, 500);
     right_front_motor_control = constrain(-forward_control + left_control - ccwTurn, -500, 500);
     left_rear_motor_control = constrain(forward_control - left_control - ccwTurn, -500, 500);
@@ -412,7 +408,7 @@ void goStraight(void)
     left_front_motor.writeMicroseconds(SERVO_STOP_VALUE + left_front_motor_control);
     right_front_motor.writeMicroseconds(SERVO_STOP_VALUE + right_front_motor_control);
     left_rear_motor.writeMicroseconds(SERVO_STOP_VALUE + left_rear_motor_control);
-    right_rear_motor.writeMicroseconds(SERVO_STOP_VALUE + right_rear_motor_control);    
+    right_rear_motor.writeMicroseconds(SERVO_STOP_VALUE + right_rear_motor_control);
     Serial.print("left error: ");
     Serial.print(left_error);
     Serial.print("forward error: ");
@@ -420,11 +416,11 @@ void goStraight(void)
     Serial.print("CCW error: ");
     Serial.println(angle);
   }
-  
+
   left_front_motor.writeMicroseconds(SERVO_STOP_VALUE );
   right_front_motor.writeMicroseconds(SERVO_STOP_VALUE );
   left_rear_motor.writeMicroseconds(SERVO_STOP_VALUE );
-  right_rear_motor.writeMicroseconds(SERVO_STOP_VALUE);    
+  right_rear_motor.writeMicroseconds(SERVO_STOP_VALUE);
 }
 
 
@@ -478,11 +474,11 @@ void orientation(void)
     right_rear_motor.writeMicroseconds(1500 + rearControl);
     right_front_motor.writeMicroseconds(1500 + frontControl);
 
-//    SerialCom->print("angle = ");
-//    SerialCom->println(angle);
-//    SerialCom->print(", error = ");
-//    SerialCom->println(error);
-//    SerialCom->println(t);
+    //    SerialCom->print("angle = ");
+    //    SerialCom->println(angle);
+    //    SerialCom->print(", error = ");
+    //    SerialCom->println(error);
+    //    SerialCom->println(t);
 
     //If the control signals are low for too long, start the timer to quit so that the motors don't burn out
     if ((abs(strafeRight) < 50) && (abs(ccwTurn) < 50))
@@ -499,18 +495,18 @@ void orientation(void)
 
 
 // Yaw Controller
-int yawController (void){
+int yawController (void) {
   /*Returns the control signal for a yaw controller, can be integrated within the go straight for more performance
-  We should actually be able to superimpose all 3 control signals together, I'll discuss with Andrew more in the lab*/
+    We should actually be able to superimpose all 3 control signals together, I'll discuss with Andrew more in the lab*/
   int ccwGain = 1500; //same as initialising gain
   int ccwTurn;
   float leftFrontDist, leftBackDist, angle;
-  
+
   leftFrontDist = left_front_dist();
   leftBackDist = left_back_dist();
 
   //approximate sin theta to theta
-  angle = (leftFrontDist - leftBackDist)/separationDist;
+  angle = (leftFrontDist - leftBackDist) / separationDist;
   ccwTurn = angle * ccwGain;
   ccwTurn = constrain(ccwTurn, -500, 500);
   return ccwTurn;
@@ -518,7 +514,7 @@ int yawController (void){
 
 
 
-void turn_90_gyro(void){
+void turn_90_gyro(void) {
   /*Need to check positives and negatives, and adjust... also need to do a units check to make sure values aren't garbage*/
   //Take CW to be positive
   float currentAngle = 0;
@@ -526,27 +522,27 @@ void turn_90_gyro(void){
   float rotationalGain = 25;//26.2; //Gain of 1500/180*pi, same gain as the orientation code
   float angleChange, angularVelocity;
   int tinit, t, motorControl;
-  
+
   //SerialCom ->println();
   // convert the 0-1023 signal to 0-5v
-  while (abs(error) > 2){ //add more exit conditions if need be
-    
+  while (abs(error) > 2) { //add more exit conditions if need be
+
     tinit = millis();
-    gyroRate = (analogRead(gyroPin) * gyroSupplyVoltage) / 1023; 
+    gyroRate = (analogRead(gyroPin) * gyroSupplyVoltage) / 1023;
     // find the voltage offset the value of voltage when gyro is zero (still)
-    gyroRate -= (gyroZeroVoltage / 1023 * 5); 
-    
+    gyroRate -= (gyroZeroVoltage / 1023 * 5);
+
     // read out voltage divided the gyro sensitivity to calculate the angular velocity
     angularVelocity = gyroRate / gyroSensitivity;  // Ensure that +ve velocity is taken in the CW direction
     SerialCom ->println(angularVelocity);
-    
+
     // if the angular velocity is less than the threshold, ignore it
     if ((angularVelocity >= rotationThreshold) || (angularVelocity <= -rotationThreshold)) { // we are running a loop in T. one second will run (1000/T).
       angleChange = angularVelocity / (1000 / T);
-      
+
       currentAngle += angleChange; //check sign
-    }  
-    
+    }
+
     error = 90 - currentAngle;
 
     motorControl = error * rotationalGain;
@@ -568,7 +564,7 @@ void turn_90_gyro(void){
   }
   motorControl = 0;
   left_front_motor.writeMicroseconds(1500 + motorControl);
-    left_rear_motor.writeMicroseconds(1500 + motorControl);
-    right_rear_motor.writeMicroseconds(1500 + motorControl);
-    right_front_motor.writeMicroseconds(1500 + motorControl);
+  left_rear_motor.writeMicroseconds(1500 + motorControl);
+  right_rear_motor.writeMicroseconds(1500 + motorControl);
+  right_front_motor.writeMicroseconds(1500 + motorControl);
 }
