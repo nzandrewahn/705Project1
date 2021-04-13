@@ -23,7 +23,7 @@
 //#define NO_HC-SR04 //Uncomment of HC-SR04 ultrasonic ranging sensor is not attached.
 //#define NO_BATTERY_V_OK //Uncomment of BATTERY_V_OK if you do not care about battery damage.
 
-#define WALL_DISTANCE (6.2)
+#define WALL_DISTANCE (8)
 #define FRONT_DISTANCE_LIMIT (6)
 #define ANTICLOCKWISE (1000)
 #define CLOCKWISE (2000)
@@ -353,14 +353,14 @@ void goStraight(void)
   float avgDistance = 0;    //Average distance from the left wall
   float left_error = 0;     //Error from the distance of the wall that was set
   float left_I_error = 0;   //Integral of the left error
-  float left_I_gain = 1;    //Left controller I gain
-  int left_P_gain = 100;    //Left controller P gain
+  float left_I_gain = 0.02;    //Left controller I gain
+  int left_P_gain = 35;    //Left controller P gain
   int left_control;         //Control action for left controller
 
   float angle;              //The angle from being straight from the wall
   float ccw_I_error = 0;    //Angle controller integral error
-  int ccwGain = 2000;       //Angle controller P gain, same as initialising gain
-  float ccw_I_gain = 10;    //Angle controller I gain
+  int ccwGain = 2000;       //Angle controller P gain, same as initialising gain ///2000
+  float ccw_I_gain = 0.25;    //Angle controller I gain
   float ccwTurn;            //Control action for angle controller
 
   float forward_error = 10; //Error from the desired distance at the front of the wall
@@ -381,11 +381,6 @@ void goStraight(void)
     leftFrontDist = left_front_dist();
     leftBackDist = left_back_dist();
 
-    //approximate sin theta to theta
-    angle = (leftFrontDist - leftBackDist) / separationDist;
-    ccw_I_error += angle;
-    ccwTurn = constrain(int(angle * ccwGain + ccw_I_error * ccw_I_gain), -500, 500);
-
     avgDistance = (leftFrontDist + leftBackDist) / 2;
     left_error = WALL_DISTANCE - avgDistance;
 
@@ -395,7 +390,12 @@ void goStraight(void)
       left_I_error = 0;
     }
 
-    left_control = constrain(int(left_error * left_P_gain + left_I_error * left_I_gain), -500 + abs(ccwTurn), 500 - abs(ccwTurn)); // TUNE
+    left_control = constrain(int(left_error * left_P_gain + left_I_error * left_I_gain), -500, 500); // TUNE
+
+    //approximate sin theta to theta
+    angle = (leftFrontDist - leftBackDist) / separationDist;
+    ccw_I_error += angle;
+    ccwTurn = constrain(int(angle * ccwGain + ccw_I_error * ccw_I_gain), -500 + abs(left_control), 500 - abs(left_control));
 
     forward_error = FRONT_DISTANCE_LIMIT - front_dist();
     forward_control = constrain(forward_error * forward_gain, - 500 + abs(left_control) + abs(ccwTurn), 500 - abs(left_control) - abs(ccwTurn));
@@ -409,12 +409,12 @@ void goStraight(void)
     right_front_motor.writeMicroseconds(SERVO_STOP_VALUE + right_front_motor_control);
     left_rear_motor.writeMicroseconds(SERVO_STOP_VALUE + left_rear_motor_control);
     right_rear_motor.writeMicroseconds(SERVO_STOP_VALUE + right_rear_motor_control);
-    Serial.print("left error: ");
-    Serial.print(left_error);
+    //Serial.print("left error: ");
+    //Serial.println(left_error);
     Serial.print("forward error: ");
     Serial.println(forward_error);
-    Serial.print("CCW error: ");
-    Serial.println(angle);
+   // Serial.print("CCW error: ");
+    //Serial.println(angle);
   }
 
   left_front_motor.writeMicroseconds(SERVO_STOP_VALUE );
@@ -450,7 +450,7 @@ void orientation(void)
       //Reference angle is 0, control signal for turning CCW
       ccwTurn = angle * ccwGain;
       //6.2 = 15 - 8.8 (dist from centre of robot to sensor)
-      error = 6.2 - dist;
+      error = WALL_DISTANCE - dist;
       //Control signal for strafing right
       strafeRight = error * strafeGain;
       strafeRight = (strafeRight > 500) ? 500 : strafeRight;
