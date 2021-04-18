@@ -23,7 +23,7 @@
 //#define NO_HC-SR04 //Uncomment of HC-SR04 ultrasonic ranging sensor is not attached.
 //#define NO_BATTERY_V_OK //Uncomment of BATTERY_V_OK if you do not care about battery damage.
 
-#define WALL_DISTANCE (7)
+#define WALL_DISTANCE (7.45)
 #define FRONT_DISTANCE_LIMIT (6)
 #define ANTICLOCKWISE (1000)
 #define CLOCKWISE (2000)
@@ -60,11 +60,6 @@ float right_dist();
 float front_dist();
 int cornerCount = 0;
 bool complete = 0;
-
-//Tuning Parameters
-int Kd = 0;
-int Kp = 30;
-int Ki = 0;
 
 // Distance between the two IR sensors
 int separationDist = 19;
@@ -172,7 +167,6 @@ STATE stopped()
     SerialCom->println("STOPPED---------");
     //Only check whether the robot can revert to running state if it has not completed its loop
     if (!complete) {
-
 #ifndef NO_BATTERY_V_OK
       //500ms timed if statement to check lipo and output speed settings
       if (is_battery_voltage_OK())
@@ -371,8 +365,6 @@ void goStraight(void)
   int left_front_motor_control, right_front_motor_control, left_rear_motor_control, right_rear_motor_control;
 
   SerialCom -> println("Entered goStraight Function");
-  SerialCom -> print("forward error: ");
-  SerialCom -> println(forward_error);
 
   while (abs(forward_error) > 1) {
     forward_error = FRONT_DISTANCE_LIMIT - front_dist();
@@ -381,42 +373,50 @@ void goStraight(void)
     leftFrontDist = left_front_dist();
     leftBackDist = left_back_dist();
 
+    //Calculate the distance away from the wall
     avgDistance = (leftFrontDist + leftBackDist) / 2;
     left_error = WALL_DISTANCE - avgDistance;
 
-    if (abs(left_error) < 4) { //4
+    //To prevent integrator wind up, only calculate the integral control effort if the error is less than 4 cm
+    if (abs(left_error) < 4) { 
       left_I_error += left_error;
-    } else {
-      //left_I_error = 0;
     }
 
-    left_control = constrain(int(left_error * left_P_gain + left_I_error * left_I_gain), -500, 500); // TUNE
+    //Calculate the control effort to move left
+    left_control = constrain(int(left_error * left_P_gain + left_I_error * left_I_gain), -500, 500); 
 
     //approximate sin theta to theta
     angle = (leftFrontDist - leftBackDist) / separationDist;
     ccw_I_error += angle;
+
+    //Calculate the turning control effort and saturate it so that the turning and strafing control efforts do not exceed 500 when added
     ccwTurn = constrain(int(angle * ccwGain + ccw_I_error * ccw_I_gain), -500 + abs(left_control), 500 - abs(left_control));
 
+    //Calculate the forward movement control effort and saturate it so that the forward, turning and strafing control efforts do not exceed 500 when added
     forward_error = FRONT_DISTANCE_LIMIT - front_dist();
     forward_control = constrain(forward_error * forward_gain, - 400 + abs(left_control) + abs(ccwTurn), 400 - abs(left_control) - abs(ccwTurn));
 
+    //Calculate each motor's control effort by superimposing each controller in the relevant direction
     left_front_motor_control = constrain(forward_control + left_control - ccwTurn, -500, 500);
     right_front_motor_control = constrain(-forward_control + left_control - ccwTurn, -500, 500);
     left_rear_motor_control = constrain(forward_control - left_control - ccwTurn, -500, 500);
     right_rear_motor_control = constrain(-forward_control - left_control - ccwTurn, -500, 500);
 
+    //Send power to the motors
     left_front_motor.writeMicroseconds(SERVO_STOP_VALUE + left_front_motor_control);
     right_front_motor.writeMicroseconds(SERVO_STOP_VALUE + right_front_motor_control);
     left_rear_motor.writeMicroseconds(SERVO_STOP_VALUE + left_rear_motor_control);
     right_rear_motor.writeMicroseconds(SERVO_STOP_VALUE + right_rear_motor_control);
-//    Serial.print("left error: ");
+    
+    Serial.print("left error: ");
     Serial.println(left_error);
-//    Serial.print("forward error: ");
-//    Serial.println(left_control);
-//    Serial.print("CCW error: ");
-//    Serial.println(left_I_error);
+    Serial.print("forward error: ");
+    Serial.println(forward_error);
+    Serial.print("CCW error: ");
+    Serial.println(angle);
   }
 
+  //Stop the motors when the front error is less than 1 cm 
   left_front_motor.writeMicroseconds(SERVO_STOP_VALUE );
   right_front_motor.writeMicroseconds(SERVO_STOP_VALUE );
   left_rear_motor.writeMicroseconds(SERVO_STOP_VALUE );
@@ -442,8 +442,7 @@ void orientation(void)
     leftBackDist = left_back_dist();
     //distance from the wall
     dist = (leftFrontDist + leftBackDist) / 2;
-    Serial.print("LOOK HERE");
-    Serial.println(dist);
+    
     //approximate sin theta to theta
     angle = (leftFrontDist - leftBackDist) / separationDist;
 
@@ -496,26 +495,6 @@ void orientation(void)
 }
 
 
-// Yaw Controller
-int yawController (void) {
-  /*Returns the control signal for a yaw controller, can be integrated within the go straight for more performance
-    We should actually be able to superimpose all 3 control signals together, I'll discuss with Andrew more in the lab*/
-  int ccwGain = 1500; //same as initialising gain
-  int ccwTurn;
-  float leftFrontDist, leftBackDist, angle;
-
-  leftFrontDist = left_front_dist();
-  leftBackDist = left_back_dist();
-
-  //approximate sin theta to theta
-  angle = (leftFrontDist - leftBackDist) / separationDist;
-  ccwTurn = angle * ccwGain;
-  ccwTurn = constrain(ccwTurn, -500, 500);
-  return ccwTurn;
-}
-
-
-
 void turn_90_gyro(void) {
   /*Need to check positives and negatives, and adjust... also need to do a units check to make sure values aren't garbage*/
   //Take CW to be positive
@@ -564,9 +543,9 @@ void turn_90_gyro(void) {
 
     delay (T - t);
   }
-  motorControl = 0;
-  left_front_motor.writeMicroseconds(1500 + motorControl);
-  left_rear_motor.writeMicroseconds(1500 + motorControl);
-  right_rear_motor.writeMicroseconds(1500 + motorControl);
-  right_front_motor.writeMicroseconds(1500 + motorControl);
+  //Stop motors
+  left_front_motor.writeMicroseconds(1500);
+  left_rear_motor.writeMicroseconds(1500);
+  right_rear_motor.writeMicroseconds(1500);
+  right_front_motor.writeMicroseconds(1500);
 }
