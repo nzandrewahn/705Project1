@@ -354,7 +354,7 @@ void goStraight(void)
 
   float angle;             //The angle from being straight from the wall
   float ccw_I_error = 0;   //Angle controller integral error
-  int ccwGain = 2000;      //Angle controller P gain, same as initialising gain ///2000
+  int ccwGain = 2000;      //Angle controller P gain, same as initialising gain
   float ccw_I_gain = 0.25; //Angle controller I gain
   float ccwTurn;           //Control action for angle controller
 
@@ -369,9 +369,7 @@ void goStraight(void)
 
   while (abs(forward_error) > 1)
   {
-    forward_error = FRONT_DISTANCE_LIMIT - front_dist();
-    forward_control = forward_error * forward_gain;
-
+    //Get IR distances
     leftFrontDist = left_front_dist();
     leftBackDist = left_back_dist();
 
@@ -440,29 +438,33 @@ void orientation(void)
 
   while (((abs(angle) > 0.0349) || (abs(error) > 0.2)) && (t < 1000))
   {
+    //Get IR distances
     leftFrontDist = left_front_dist();
     leftBackDist = left_back_dist();
-    //distance from the wall
+
+    //Find the distance from the wall
     dist = (leftFrontDist + leftBackDist) / 2;
 
-    //approximate sin theta to theta
+    //Approximate sin theta to theta
     angle = (leftFrontDist - leftBackDist) / separationDist;
 
+    //Only use strafing controller if the angle is sufficiently small, otherwise turn CCW only
     if ((angle < 3.14 / 8) && (angle > -3.14 / 8))
     {
       //Reference angle is 0, control signal for turning CCW
-      ccwTurn = angle * ccwGain;
-      //6.2 = 15 - 8.8 (dist from centre of robot to sensor)
+      ccwTurn = constrain(int(angle * ccwGain), -500, 500);
+
       error = WALL_DISTANCE - dist;
-      //Control signal for strafing right
-      strafeRight = error * strafeGain;
-      strafeRight = (strafeRight > 500) ? 500 : strafeRight;
+      //Control signal for strafing right, constrain so that when superimposed on ccwTurn, the combined signal will not exceed 500
+      strafeRight = constrain(int(error * strafeGain), -500 + abs(ccwTurn), 500 - abs(ccwTurn));
     }
     else
     {
       ccwTurn = 500;
       strafeRight = 0;
     }
+
+    //Superimpose the two control signals
 
     //Control signal for front motors
     frontControl = (-ccwTurn + strafeRight > 500) ? 500 : -ccwTurn + strafeRight;
@@ -493,7 +495,7 @@ void orientation(void)
       t = 0;
     }
   }
-  SerialCom->print("orientation finished");
+  SerialCom->print("Orientation finished");
 }
 
 void turn_90_gyro(void)
