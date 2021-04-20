@@ -19,7 +19,7 @@
 
 #include <Servo.h> //Need for Servo pulse output
 
-//#define NO_READ_GYRO  //Uncomment of GYRO is not attached.
+//#define NO_READ_GYRO  //Uncomment if GYRO is not attached.
 //#define NO_HC-SR04 //Uncomment of HC-SR04 ultrasonic ranging sensor is not attached.
 //#define NO_BATTERY_V_OK //Uncomment of BATTERY_V_OK if you do not care about battery damage.
 
@@ -97,15 +97,15 @@ void loop(void) //main loop
   //Finite-state machine Code
   switch (machine_state)
   {
-    case INITIALISING:
-      machine_state = initialising();
-      break;
-    case RUNNING: //Lipo Battery Volage OK
-      machine_state = running();
-      break;
-    case STOPPED: //Stop of Lipo Battery voltage is too low, to protect Battery
-      machine_state = stopped();
-      break;
+  case INITIALISING:
+    machine_state = initialising();
+    break;
+  case RUNNING: //Lipo Battery Volage OK
+    machine_state = running();
+    break;
+  case STOPPED: //Stop of Lipo Battery voltage is too low, to protect Battery
+    machine_state = stopped();
+    break;
   };
 }
 
@@ -166,7 +166,8 @@ STATE stopped()
     previous_millis = millis();
     SerialCom->println("STOPPED---------");
     //Only check whether the robot can revert to running state if it has not completed its loop
-    if (!complete) {
+    if (!complete)
+    {
 #ifndef NO_BATTERY_V_OK
       //500ms timed if statement to check lipo and output speed settings
       if (is_battery_voltage_OK())
@@ -347,15 +348,15 @@ void goStraight(void)
   float avgDistance = 0;    //Average distance from the left wall
   float left_error = 0;     //Error from the distance of the wall that was set
   float left_I_error = 0;   //Integral of the left error
-  float left_I_gain = 0.02;    //Left controller I gain
+  float left_I_gain = 0.02; //Left controller I gain
   int left_P_gain = 120;    //Left controller P gain
   int left_control;         //Control action for left controller
 
-  float angle;              //The angle from being straight from the wall
-  float ccw_I_error = 0;    //Angle controller integral error
-  int ccwGain = 2000;       //Angle controller P gain, same as initialising gain ///2000
-  float ccw_I_gain = 0.25;    //Angle controller I gain
-  float ccwTurn;            //Control action for angle controller
+  float angle;             //The angle from being straight from the wall
+  float ccw_I_error = 0;   //Angle controller integral error
+  int ccwGain = 2000;      //Angle controller P gain, same as initialising gain ///2000
+  float ccw_I_gain = 0.25; //Angle controller I gain
+  float ccwTurn;           //Control action for angle controller
 
   float forward_error = 10; //Error from the desired distance at the front of the wall
   float forward_gain = -30; //Front controller P gain
@@ -364,9 +365,10 @@ void goStraight(void)
   //Control actions for each motor
   int left_front_motor_control, right_front_motor_control, left_rear_motor_control, right_rear_motor_control;
 
-  SerialCom -> println("Entered goStraight Function");
+  SerialCom->println("Entered goStraight Function");
 
-  while (abs(forward_error) > 1) {
+  while (abs(forward_error) > 1)
+  {
     forward_error = FRONT_DISTANCE_LIMIT - front_dist();
     forward_control = forward_error * forward_gain;
 
@@ -378,12 +380,13 @@ void goStraight(void)
     left_error = WALL_DISTANCE - avgDistance;
 
     //To prevent integrator wind up, only calculate the integral control effort if the error is less than 4 cm
-    if (abs(left_error) < 4) { 
+    if (abs(left_error) < 4)
+    {
       left_I_error += left_error;
     }
 
     //Calculate the control effort to move left
-    left_control = constrain(int(left_error * left_P_gain + left_I_error * left_I_gain), -500, 500); 
+    left_control = constrain(int(left_error * left_P_gain + left_I_error * left_I_gain), -500, 500);
 
     //approximate sin theta to theta
     angle = (leftFrontDist - leftBackDist) / separationDist;
@@ -394,7 +397,7 @@ void goStraight(void)
 
     //Calculate the forward movement control effort and saturate it so that the forward, turning and strafing control efforts do not exceed 500 when added
     forward_error = FRONT_DISTANCE_LIMIT - front_dist();
-    forward_control = constrain(forward_error * forward_gain, - 400 + abs(left_control) + abs(ccwTurn), 400 - abs(left_control) - abs(ccwTurn));
+    forward_control = constrain(forward_error * forward_gain, -400 + abs(left_control) + abs(ccwTurn), 400 - abs(left_control) - abs(ccwTurn));
 
     //Calculate each motor's control effort by superimposing each controller in the relevant direction
     left_front_motor_control = constrain(forward_control + left_control - ccwTurn, -500, 500);
@@ -407,7 +410,7 @@ void goStraight(void)
     right_front_motor.writeMicroseconds(SERVO_STOP_VALUE + right_front_motor_control);
     left_rear_motor.writeMicroseconds(SERVO_STOP_VALUE + left_rear_motor_control);
     right_rear_motor.writeMicroseconds(SERVO_STOP_VALUE + right_rear_motor_control);
-    
+
     Serial.print("left error: ");
     Serial.println(left_error);
     Serial.print("forward error: ");
@@ -416,13 +419,12 @@ void goStraight(void)
     Serial.println(angle);
   }
 
-  //Stop the motors when the front error is less than 1 cm 
-  left_front_motor.writeMicroseconds(SERVO_STOP_VALUE );
-  right_front_motor.writeMicroseconds(SERVO_STOP_VALUE );
-  left_rear_motor.writeMicroseconds(SERVO_STOP_VALUE );
+  //Stop the motors when the front error is less than 1 cm
+  left_front_motor.writeMicroseconds(SERVO_STOP_VALUE);
+  right_front_motor.writeMicroseconds(SERVO_STOP_VALUE);
+  left_rear_motor.writeMicroseconds(SERVO_STOP_VALUE);
   right_rear_motor.writeMicroseconds(SERVO_STOP_VALUE);
 }
-
 
 void orientation(void)
 {
@@ -442,7 +444,7 @@ void orientation(void)
     leftBackDist = left_back_dist();
     //distance from the wall
     dist = (leftFrontDist + leftBackDist) / 2;
-    
+
     //approximate sin theta to theta
     angle = (leftFrontDist - leftBackDist) / separationDist;
 
@@ -491,22 +493,23 @@ void orientation(void)
       t = 0;
     }
   }
-  SerialCom -> print("orientation finished");
+  SerialCom->print("orientation finished");
 }
 
-
-void turn_90_gyro(void) {
+void turn_90_gyro(void)
+{
   /*Need to check positives and negatives, and adjust... also need to do a units check to make sure values aren't garbage*/
   //Take CW to be positive
   float currentAngle = 0;
   float error = 90;
-  float rotationalGain = 25;//26.2; //Gain of 1500/180*pi, same gain as the orientation code
+  float rotationalGain = 25; //26.2; //Gain of 1500/180*pi, same gain as the orientation code
   float angleChange, angularVelocity;
   int tinit, t, motorControl;
 
   //SerialCom ->println();
   // convert the 0-1023 signal to 0-5v
-  while (abs(error) > 2) { //add more exit conditions if need be
+  while (abs(error) > 2)
+  { //add more exit conditions if need be
 
     tinit = millis();
     gyroRate = (analogRead(gyroPin) * gyroSupplyVoltage) / 1023;
@@ -514,11 +517,12 @@ void turn_90_gyro(void) {
     gyroRate -= (gyroZeroVoltage / 1023 * 5);
 
     // read out voltage divided the gyro sensitivity to calculate the angular velocity
-    angularVelocity = gyroRate / gyroSensitivity;  // Ensure that +ve velocity is taken in the CW direction
-    SerialCom ->println(angularVelocity);
+    angularVelocity = gyroRate / gyroSensitivity; // Ensure that +ve velocity is taken in the CW direction
+    SerialCom->println(angularVelocity);
 
     // if the angular velocity is less than the threshold, ignore it
-    if ((angularVelocity >= rotationThreshold) || (angularVelocity <= -rotationThreshold)) { // we are running a loop in T. one second will run (1000/T).
+    if ((angularVelocity >= rotationThreshold) || (angularVelocity <= -rotationThreshold))
+    { // we are running a loop in T. one second will run (1000/T).
       angleChange = angularVelocity / (1000 / T);
 
       currentAngle += angleChange; //check sign
@@ -538,10 +542,10 @@ void turn_90_gyro(void) {
     //delay(10);
     t = millis() - tinit;
 
-    SerialCom -> print ("time: ");
-    SerialCom -> println(tinit);
+    SerialCom->print("time: ");
+    SerialCom->println(tinit);
 
-    delay (T - t);
+    delay(T - t);
   }
   //Stop motors
   left_front_motor.writeMicroseconds(1500);
