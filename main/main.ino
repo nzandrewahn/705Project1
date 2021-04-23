@@ -15,6 +15,8 @@
   Author: Logan Stuart
   Modified: 15/02/2018
   Author: Logan Stuart
+  Modified: March - April 2021
+  Authors: Kiera Montgomery, Andrew Ahn
 */
 
 #include <Servo.h> //Need for Servo pulse output
@@ -23,15 +25,9 @@
 //#define NO_HC-SR04 //Uncomment of HC-SR04 ultrasonic ranging sensor is not attached.
 //#define NO_BATTERY_V_OK //Uncomment of BATTERY_V_OK if you do not care about battery damage.
 
-#define WALL_DISTANCE (7.6) //7.45
+#define WALL_DISTANCE (7.45) 
 #define FRONT_DISTANCE_LIMIT (6)
-#define ANTICLOCKWISE (1000)
-#define CLOCKWISE (2000)
-#define STOP (1500)
 #define SERVO_STOP_VALUE (1500)
-#define WINDOW_SIZE (300)
-#define YAW_THRESHHOLD (500)
-#define YAW_TOLERANCE (3)
 
 //State machine states
 enum STATE
@@ -86,7 +82,7 @@ void setup(void)
   delay(1000);
   SerialCom->println("Setup....");
 
-  delay(1000); //settling time but no really needed
+  delay(1000); //settling time
 }
 
 void loop(void) //main loop
@@ -134,10 +130,10 @@ STATE running()
   delay(300);
   goStraight();
 
-  // Increment number of corners
+  // Increment number of corners reached
   cornerCount++;
 
-  // Check if turning count is higher than 4 if yes then return
+  // Check if turning count is higher than 4 if yes then finish the program
   if (cornerCount >= 4)
   {
     stop();
@@ -151,7 +147,7 @@ STATE running()
   return RUNNING;
 }
 
-//Stop of Lipo Battery voltage is too low, to protect Battery
+//Stop if Lipo Battery voltage is too low, to protect Battery
 STATE stopped()
 {
   static byte counter_lipo_voltage_ok;
@@ -306,7 +302,7 @@ void stop() // Stopping function
   right_front_motor.writeMicroseconds(1500);
 }
 
-/////////////////////////////// Led
+/////////////////////////////// LED
 void slow_flash_LED_builtin()
 {
   static unsigned long slow_flash_millis;
@@ -351,11 +347,11 @@ void goStraight(void)
   int left_P_gain = 120;    //Left controller P gain
   int left_control;         //Control action for left controller
 
-  float angle;             //The angle from being straight from the wall
-  float ccw_I_error = 0;   //Angle controller integral error
-  int ccwGain = 2000;      //Angle controller P gain, same as initialising gain
-  float ccw_I_gain = 0.25; //Angle controller I gain
-  float ccwTurn;           //Control action for angle controller
+  float angle;              //The angle from being straight from the wall
+  float ccw_I_error = 0;    //Angle controller integral error
+  int ccwGain = 2000;       //Angle controller P gain, same as initialising gain
+  float ccw_I_gain = 0.25;  //Angle controller I gain
+  float ccwTurn;            //Control action for angle controller
 
   float forward_error = 10; //Error from the desired distance at the front of the wall
   float forward_gain = -30; //Front controller P gain
@@ -376,7 +372,7 @@ void goStraight(void)
     avgDistance = (leftFrontDist + leftBackDist) / 2;
     left_error = WALL_DISTANCE - avgDistance;
 
-    //To prevent integrator wind up, only calculate the integral control effort if the error is less than 4 cm
+    //To prevent integrator wind up, only calculate the integral control effort if the absolute error is less than 4 cm
     if (abs(left_error) < 4)
     {
       left_I_error += left_error;
@@ -408,12 +404,12 @@ void goStraight(void)
     left_rear_motor.writeMicroseconds(SERVO_STOP_VALUE + left_rear_motor_control);
     right_rear_motor.writeMicroseconds(SERVO_STOP_VALUE + right_rear_motor_control);
 
-    Serial.print("left error: ");
-    Serial.println(left_error);
-    Serial.print("I error: ");
-    Serial.println(left_I_error);
-    Serial.print("CCW error: ");
-    Serial.println(angle);
+//    Serial.print("left error: ");
+//    Serial.println(left_error);
+//    Serial.print("forward error: ");
+//    Serial.println(forward_error);
+//    Serial.print("CCW error: ");
+//    Serial.println(angle);
   }
 
   //Stop the motors when the front error is less than 1 cm
@@ -452,7 +448,7 @@ void orientation(void)
       //Reference angle is 0, control signal for turning CCW
       ccwTurn = constrain(int(angle * ccwGain), -500, 500);
 
-      error = WALL_DISTANCE +0.2 - dist;
+      error = WALL_DISTANCE - dist;
       //Control signal for strafing right, constrain so that when superimposed on ccwTurn, the combined signal will not exceed 500
       strafeRight = constrain(int(error * strafeGain), -500 + abs(ccwTurn), 500 - abs(ccwTurn));
     }
@@ -462,8 +458,7 @@ void orientation(void)
       strafeRight = 0;
     }
 
-    //Superimpose the two control signals
-
+    ////Superimpose the two control signals
     //Control signal for front motors
     frontControl = (-ccwTurn + strafeRight > 500) ? 500 : -ccwTurn + strafeRight;
     frontControl = (-ccwTurn + strafeRight < -500) ? -500 : frontControl;
@@ -498,19 +493,17 @@ void orientation(void)
 
 void turn_90_gyro(void)
 {
-  /*Need to check positives and negatives, and adjust... also need to do a units check to make sure values aren't garbage*/
   //Take CW to be positive
   float currentAngle = 0;
   float error = 90;
-  float rotationalGain = 25; //26.2; //Gain of 1500/180*pi, same gain as the orientation code
+  float rotationalGain = 25; //Gain of 1500/180*pi, same gain as orientation
   float angleChange, angularVelocity;
   int tinit, t, motorControl;
 
   //SerialCom ->println();
   // convert the 0-1023 signal to 0-5v
   while (abs(error) > 2)
-  { //add more exit conditions if need be
-
+  {
     tinit = millis();
     gyroRate = (analogRead(gyroPin) * gyroSupplyVoltage) / 1023;
     // find the voltage offset the value of voltage when gyro is zero (still)
@@ -540,8 +533,7 @@ void turn_90_gyro(void)
     right_rear_motor.writeMicroseconds(1500 + motorControl);
     right_front_motor.writeMicroseconds(1500 + motorControl);
 
-    //may not be necessary, CHECK
-    //delay(10);
+    //ensure that the time loop is constant, and account for time taken to execute code
     t = millis() - tinit;
 
     SerialCom->print("time: ");
@@ -549,6 +541,7 @@ void turn_90_gyro(void)
 
     delay(T - t);
   }
+  
   //Stop motors
   left_front_motor.writeMicroseconds(1500);
   left_rear_motor.writeMicroseconds(1500);
